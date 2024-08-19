@@ -1,0 +1,174 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "a4851f08c152232c38d0d2f933c1db95",
+    "entities": [
+      {
+        "tableName": "Mangas",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`mangaId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `mangaLink` TEXT NOT NULL, `mangaTitle` TEXT NOT NULL, `mangaImageCover` TEXT NOT NULL, `mangaDescription` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "mangaId",
+            "columnName": "mangaId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mangaLink",
+            "columnName": "mangaLink",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mangaTitle",
+            "columnName": "mangaTitle",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mangaImageCover",
+            "columnName": "mangaImageCover",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mangaDescription",
+            "columnName": "mangaDescription",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "mangaId"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "Library",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`libraryId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `mangaId` INTEGER NOT NULL, `timeStamp` INTEGER NOT NULL, FOREIGN KEY(`mangaId`) REFERENCES `Mangas`(`mangaId`) ON UPDATE CASCADE ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "libraryId",
+            "columnName": "libraryId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mangaId",
+            "columnName": "mangaId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timeStamp",
+            "columnName": "timeStamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "libraryId"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": [
+          {
+            "table": "Mangas",
+            "onDelete": "CASCADE",
+            "onUpdate": "CASCADE",
+            "columns": [
+              "mangaId"
+            ],
+            "referencedColumns": [
+              "mangaId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "ChaptersRead",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`mangaId` INTEGER NOT NULL, `chapterLink` TEXT NOT NULL, `chapter` REAL NOT NULL, `page` INTEGER NOT NULL, `totalPages` INTEGER NOT NULL, `timeStamp` INTEGER NOT NULL, PRIMARY KEY(`mangaId`, `chapterLink`), FOREIGN KEY(`mangaId`) REFERENCES `Mangas`(`mangaId`) ON UPDATE CASCADE ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "mangaId",
+            "columnName": "mangaId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chapterLink",
+            "columnName": "chapterLink",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chapter",
+            "columnName": "chapter",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "page",
+            "columnName": "page",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalPages",
+            "columnName": "totalPages",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timeStamp",
+            "columnName": "timeStamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "mangaId",
+            "chapterLink"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": [
+          {
+            "table": "Mangas",
+            "onDelete": "CASCADE",
+            "onUpdate": "CASCADE",
+            "columns": [
+              "mangaId"
+            ],
+            "referencedColumns": [
+              "mangaId"
+            ]
+          }
+        ]
+      }
+    ],
+    "views": [
+      {
+        "viewName": "ChaptersReadInformation",
+        "createSql": "CREATE VIEW `${VIEW_NAME}` AS SELECT Mangas.mangaId, Mangas.mangaTitle, Mangas.mangaLink, Mangas.mangaImageCover, ChaptersRead.chapterLink, ChaptersRead.chapter, ChaptersRead.page, ChaptersRead.totalPages, ChaptersRead.totalPages - ChaptersRead.page AS pagesLeft, ChaptersRead.timeStamp FROM Mangas INNER JOIN ChaptersRead ON Mangas.mangaId = ChaptersRead.mangaId"
+      },
+      {
+        "viewName": "LibraryInformation",
+        "createSql": "CREATE VIEW `${VIEW_NAME}` AS SELECT Library.libraryId, Mangas.mangaId, Mangas.mangaTitle, Mangas.mangaImageCover, Mangas.mangaLink, Library.timeStamp FROM Library INNER JOIN Mangas ON Library.mangaId = Mangas.mangaId"
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a4851f08c152232c38d0d2f933c1db95')"
+    ]
+  }
+}
