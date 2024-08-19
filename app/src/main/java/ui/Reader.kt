@@ -4,22 +4,51 @@ import android.content.Context
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import coil.compose.rememberAsyncImagePainter
 import coil.imageLoader
 import coil.request.ImageRequest
@@ -37,7 +66,9 @@ import data.dao.ChaptersReadInformationDao
 import scraper.downloadImage
 import java.io.File
 import java.util.UUID
+import kotlin.math.roundToInt
 
+@OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun Reader(chapterLink: String, chaptersReadInformationDao: ChaptersReadInformationDao, chaptersReadDao: ChaptersReadDao, mangaId: Int) {
@@ -54,6 +85,7 @@ fun Reader(chapterLink: String, chaptersReadInformationDao: ChaptersReadInformat
     val imageFileNames = remember { mutableStateOf(emptyList<String>()) }
     //var mangaId by remember { mutableStateOf(0) }
     var chapter by remember { mutableStateOf(0.0) }
+    var isTopBarVisible by remember {mutableStateOf(false)}
 
     if (!uniqueFolder.exists()) {
         uniqueFolder.mkdirs()
@@ -163,64 +195,96 @@ fun Reader(chapterLink: String, chaptersReadInformationDao: ChaptersReadInformat
         }
     }
 
-    LazyColumn(modifier = Modifier.fillMaxWidth(), state = listState) {
-        itemsIndexed(imagePaths) { index, imagePath ->
-            var aspectRatio by remember { mutableStateOf(1f) }
-            var isImageLoaded by remember { mutableStateOf(false) }
 
-            if (imagePath.isNotEmpty()) {
-                LaunchedEffect(imagePath) {
-                    val request = ImageRequest.Builder(context)
-                        .data(imagePath)
-                        .allowHardware(false) // Avoid hardware bitmaps as they might cause issues with aspect ratio calculation
-                        .build()
-
-                    val result = (context.imageLoader.execute(request) as? SuccessResult)?.drawable
-                    result?.let { drawable ->
-                        aspectRatio = drawable.intrinsicWidth.toFloat() / drawable.intrinsicHeight.toFloat()
-                        isImageLoaded = true
+    Scaffold(
+        topBar = {
+            AnimatedVisibility(
+                visible = isTopBarVisible,
+            ) {
+                TopAppBar(navigationIcon = {
+                    IconButton(onClick = {  /*do something*/  }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Localized description"
+                        )
                     }
-                }
-
-                if (isImageLoaded) {
-                    Image(
-                        painter = rememberAsyncImagePainter(model = imagePath),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(aspectRatio)
-                    )
-                } else {
-                    // Placeholder to maintain space while image is loading
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(1f) // Default aspect ratio while loading
-                            .background(Color.DarkGray) // Placeholder color
-                    )
-                }
+                } ,
+                    title = {
+                        Text("Hello")
+                    })
             }
-            else {
-                // Display a loading placeholder
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1f) // Default aspect ratio for placeholders
-                        .background(Color.DarkGray) // Placeholder color
-                    ,
-                    contentAlignment = Alignment.Center
-                )
-                {
-                    CircularProgressIndicator(
-                        modifier = Modifier.width(64.dp),
-                        color = MaterialTheme.colorScheme.secondary,
-                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                    )
+        },
+        modifier = Modifier.statusBarsPadding()
+    ) { innerpadding ->
+        Box(modifier = Modifier.padding(innerpadding).clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+        )
+        {
+            isTopBarVisible = !isTopBarVisible
+        }) {
+            LazyColumn(modifier = Modifier.fillMaxWidth(), state = listState) {
+                itemsIndexed(imagePaths) { index, imagePath ->
+                    var aspectRatio by remember { mutableStateOf(1f) }
+                    var isImageLoaded by remember { mutableStateOf(false) }
+
+                    if (imagePath.isNotEmpty()) {
+                        LaunchedEffect(imagePath) {
+                            val request = ImageRequest.Builder(context)
+                                .data(imagePath)
+                                .allowHardware(false) // Avoid hardware bitmaps as they might cause issues with aspect ratio calculation
+                                .build()
+
+                            val result = (context.imageLoader.execute(request) as? SuccessResult)?.drawable
+                            result?.let { drawable ->
+                                aspectRatio = drawable.intrinsicWidth.toFloat() / drawable.intrinsicHeight.toFloat()
+                                isImageLoaded = true
+                            }
+                        }
+
+                        if (isImageLoaded) {
+                            Image(
+                                painter = rememberAsyncImagePainter(model = imagePath),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(aspectRatio)
+                            )
+                        } else {
+                            // Placeholder to maintain space while image is loading
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(1f) // Default aspect ratio while loading
+                                    .background(Color.DarkGray) // Placeholder color
+                            )
+                        }
+                    }
+                    else {
+                        // Display a loading placeholder
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(1f) // Default aspect ratio for placeholders
+                                .background(Color.DarkGray) // Placeholder color
+                            ,
+                            contentAlignment = Alignment.Center
+                        )
+                        {
+                            CircularProgressIndicator(
+                                modifier = Modifier.width(64.dp),
+                                color = MaterialTheme.colorScheme.secondary,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                            )
+                        }
+                    }
                 }
             }
         }
+
     }
+
 }
 
 fun clearCache(context: Context, currentFolderName: String) {
