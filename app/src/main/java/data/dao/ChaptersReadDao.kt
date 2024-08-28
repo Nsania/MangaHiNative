@@ -20,4 +20,7 @@ interface ChaptersReadDao
 
     @Query("SELECT * FROM ChaptersRead WHERE mangaId = :mangaId AND chapter = :chapter")
     suspend fun getChapterRead(mangaId: Int, chapter: Double): ChaptersRead?
+
+    @Query("SELECT totalPages FROM ChaptersRead WHERE chapterLink = :chapterLink")
+    suspend fun getTotalPages(chapterLink: String): Int
 }

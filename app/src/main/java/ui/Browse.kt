@@ -18,6 +18,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,6 +33,7 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import data.dao.MangasDao
 import data.tables.Mangas
+import data.viewmodels.BrowseViewModel
 import kotlinx.coroutines.launch
 import scraper.Result
 import scraper.getResults
@@ -39,29 +41,37 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
 @Composable
-fun Browse(navController: NavController, mangasDao: MangasDao) {
-    var value: String by remember { mutableStateOf("") }
+fun Browse(navController: NavController, mangasDao: MangasDao, browseViewModel: BrowseViewModel) {
+    /*var value: String by remember { mutableStateOf("") }
     var results by remember { mutableStateOf(emptyList<Result>()) }
-    var errorMessage: String by remember { mutableStateOf("") }
+    var errorMessage: String by remember { mutableStateOf("") }*/
     val coroutineScope = rememberCoroutineScope()
+
+    val searchValue by browseViewModel.searchValue.collectAsState()
+    val searchResults by browseViewModel.searchResults.collectAsState()
+    val errorMessage by browseViewModel.errorMessage.collectAsState()
 
     Column {
         TextField(
-            value = value,
-            onValueChange = { value = it },
+            value = searchValue,
+            onValueChange = { browseViewModel.updateSearchValue(it) },
             label = { Text("Search Manga") },
             maxLines = 1,
-            modifier = Modifier.fillMaxWidth().padding(top = 60.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 60.dp)
         )
 
         Button(onClick = {
             coroutineScope.launch {
                 try {
-                    results = getResults(value)
-                    errorMessage = "" // Clear error message on successful result
+                    //searchResults = getResults(value)
+                    //errorMessage = "" // Clear error message on successful result
+                    browseViewModel.updateSearchResults(getResults(searchValue))
+                    browseViewModel.updateErrorMessage("")
                 } catch (e: Exception) {
                     Log.e("SimpleForm", "Error fetching results", e)
-                    errorMessage = "Failed to fetch results: ${e.message}"
+                    browseViewModel.updateErrorMessage("Failed to fetch search results")
                 }
             }
         }) {
@@ -80,24 +90,42 @@ fun Browse(navController: NavController, mangasDao: MangasDao) {
                 modifier = Modifier.padding(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(results) { result ->
-                    Column(modifier = Modifier.fillMaxHeight().fillMaxWidth(),
+                items(searchResults) { result ->
+                    Column(modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
                         AsyncImage(
                             model = result.imageCover,
                             contentDescription = "Image",
-                            modifier = Modifier.width(120.dp).height(180.dp).clickable{
-                                coroutineScope.launch {
-                                    val check = mangasDao.getManga(mangaLink = result.mangaLink)
-                                    if(check == null)
-                                    {
-                                        mangasDao.addManga(Mangas(mangaLink = result.mangaLink, mangaTitle = result.title, mangaImageCover = result.imageCover, mangaDescription = ""))
+                            modifier = Modifier
+                                .width(120.dp)
+                                .height(180.dp)
+                                .clickable {
+                                    coroutineScope.launch {
+                                        val check = mangasDao.getManga(mangaLink = result.mangaLink)
+                                        if (check == null) {
+                                            mangasDao.addManga(
+                                                Mangas(
+                                                    mangaLink = result.mangaLink,
+                                                    mangaTitle = result.title,
+                                                    mangaImageCover = result.imageCover,
+                                                    mangaDescription = ""
+                                                )
+                                            )
+                                        }
+                                        navController.navigate(
+                                            Screen.ChaptersScreen.withArgs(
+                                                URLEncoder.encode(
+                                                    result.mangaLink,
+                                                    StandardCharsets.UTF_8.toString()
+                                                )
+                                            )
+                                        )
                                     }
-                                    navController.navigate(Screen.ChaptersScreen.withArgs(URLEncoder.encode(result.mangaLink, StandardCharsets.UTF_8.toString())))
-                                }
-                            },
+                                },
                             contentScale = ContentScale.Crop,
                         )
                         Text(

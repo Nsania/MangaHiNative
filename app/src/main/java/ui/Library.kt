@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -26,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import data.dao.LibraryDao
@@ -36,17 +38,21 @@ import kotlinx.coroutines.launch
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import data.tables.Library
+import data.viewmodels.LibraryViewModel
 
 @Composable
-fun Library(libraryDao: LibraryDao, libraryInformationDao: LibraryInformationDao, navController: NavController)
+fun Library(libraryDao: LibraryDao, libraryInformationDao: LibraryInformationDao, navController: NavController, libraryViewModel: LibraryViewModel)
 {
-    var mangasList by remember {mutableStateOf<List<LibraryInformation>>(emptyList())}
+    //var mangasList by remember {mutableStateOf<List<LibraryInformation>>(emptyList())}
     val coroutineScope = rememberCoroutineScope()
+
+    val mangasInLibraryList by libraryViewModel.mangasInLibraryList.collectAsState()
 
     LaunchedEffect(Unit) {
         coroutineScope.launch {
-            val mangas = libraryInformationDao.getLibraryInformation().collect { mangas ->
-                mangasList = mangas
+            libraryInformationDao.getLibraryInformation().collect { mangas ->
+                //mangasList = mangas
+                libraryViewModel.updateMangasInLibraryList(mangas)
             }
         }
     }
@@ -55,20 +61,38 @@ fun Library(libraryDao: LibraryDao, libraryInformationDao: LibraryInformationDao
             modifier = Modifier.padding(10.dp, top = 50.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp) )
         {
-            items(mangasList) { manga ->
-                Column(modifier = Modifier.fillMaxHeight().fillMaxWidth(),
+            items(mangasInLibraryList) { manga ->
+                Column(modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
                     AsyncImage(
                         model = manga.mangaImageCover,
                         contentDescription = "Image",
-                        modifier = Modifier.width(120.dp).height(180.dp).clickable{
-                            coroutineScope.launch {
-                                libraryDao.addToLibrary(Library(manga.libraryId, manga.mangaId, System.currentTimeMillis()))
-                            }
-                            navController.navigate(Screen.ChaptersScreen.withArgs(URLEncoder.encode(manga.mangaLink, StandardCharsets.UTF_8.toString())))
-                        },
+                        modifier = Modifier
+                            .width(120.dp)
+                            .height(180.dp)
+                            .clickable {
+                                coroutineScope.launch {
+                                    libraryDao.addToLibrary(
+                                        Library(
+                                            manga.libraryId,
+                                            manga.mangaId,
+                                            System.currentTimeMillis()
+                                        )
+                                    )
+                                }
+                                navController.navigate(
+                                    Screen.ChaptersScreen.withArgs(
+                                        URLEncoder.encode(
+                                            manga.mangaLink,
+                                            StandardCharsets.UTF_8.toString()
+                                        )
+                                    )
+                                )
+                            },
                         contentScale = ContentScale.Crop,
                     )
                     Text(

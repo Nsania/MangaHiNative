@@ -13,7 +13,8 @@ import androidx.room.PrimaryKey
         childColumns = arrayOf("mangaId"),
         onDelete = ForeignKey.CASCADE,
         onUpdate = ForeignKey.CASCADE
-    )]
+    )],
+    indices = [Index(value = ["mangaId"], unique = true)]
 )
 data class Library(
     @PrimaryKey(autoGenerate = true) val libraryId: Int = 0,

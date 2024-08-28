@@ -20,6 +20,6 @@ data class ChaptersRead(
     val chapterLink: String,
     val chapter: Double,
     val page: Int = 0,
-    val totalPages: Int = 0,
+    val totalPages: Int,
     val timeStamp: Long = System.currentTimeMillis(),
 )

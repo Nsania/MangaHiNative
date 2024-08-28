@@ -15,7 +15,7 @@ interface LibraryDao
     suspend fun addToLibrary(library: Library)
 
     @Query("SELECT * FROM Library WHERE mangaId = :mangaId")
-    suspend fun getManga(mangaId: Int): Library
+    suspend fun getManga(mangaId: Int): Library?
 
     @Query("SELECT * FROM Library ORDER BY timeStamp")
     fun getLibrary(): Flow<List<Library>>
