@@ -14,8 +14,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import ui.MainActivity
-import ui.MyApplication
+import data.MyApplication
 
 /*data class CurrentReaderMode (
     val mode: Int
