@@ -89,7 +89,7 @@ fun Navigation(chaptersReadDao: ChaptersReadDao, libraryInformationDao: LibraryI
             Chapters(mangaLink = entry.arguments?.getString("mangaLink").orEmpty(), navController, chaptersReadDao, libraryDao, mangasDao, chaptersReadInformationDao)
         }
         composable(
-            route = Screen.ReaderScreen.route + "/{chapterLink}/{mangaId}",
+            route = Screen.ReaderScreen.route + "/{chapterLink}/{mangaId}/{chapterTitle}/{mangaLink}",
             arguments = listOf(
                 navArgument("chapterLink")
                 {
@@ -107,7 +107,7 @@ fun Navigation(chaptersReadDao: ChaptersReadDao, libraryInformationDao: LibraryI
         )
         { entry ->
             Reader(chapterLink = entry.arguments?.getString("chapterLink").toString(), chaptersReadInformationDao, chaptersReadDao, mangaId = entry.arguments?.getString("mangaId")
-                ?.toInt() ?: 0, navController)
+                ?.toInt() ?: 0, navController, chapterTitle = entry.arguments?.getString("chapterTitle").toString(), mangaLink = entry.arguments?.getString("mangaLink").toString())
         }
 
         composable(

@@ -18,6 +18,7 @@ import androidx.room.ForeignKey
 data class ChaptersRead(
     val mangaId: Int,
     val chapterLink: String,
+    val chapterTitle: String,
     val chapter: Double,
     val page: Int = 0,
     val totalPages: Int,

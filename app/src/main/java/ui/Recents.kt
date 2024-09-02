@@ -32,6 +32,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import data.viewmodels.RecentsViewModel
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -53,6 +54,15 @@ fun Recents(navController: NavController, chaptersReadInformationDao: ChaptersRe
         }
     }
 
+    val systemUi = rememberSystemUiController()
+    LaunchedEffect(Unit)
+    {
+        systemUi.setSystemBarsColor(
+            color = Color.Transparent,
+            darkIcons = true,
+        )
+    }
+
     Column (
         modifier = Modifier.padding(top = 50.dp, bottom = 50.dp)
     ) {
@@ -70,7 +80,13 @@ fun Recents(navController: NavController, chaptersReadInformationDao: ChaptersRe
                                     URLEncoder.encode(
                                         recent.chapterLink,
                                         StandardCharsets.UTF_8.toString()
-                                    ), recent.mangaId.toString()
+                                    ),
+                                    recent.mangaId.toString(),
+                                    recent.chapterTitle,
+                                    URLEncoder.encode(
+                                        recent.mangaLink,
+                                        StandardCharsets.UTF_8.toString()
+                                    ),
                                 )
                             )
                         }

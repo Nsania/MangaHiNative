@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import kotlinx.coroutines.launch
 import scraper.Chapter
 import scraper.getChapters
@@ -61,6 +62,7 @@ fun Chapters(
 ) {
     val coroutineScope = rememberCoroutineScope()
 
+
     val chapters by chaptersViewModel.chapters.collectAsState()
     val mangaId by chaptersViewModel.mangaId.collectAsState()
     val inLibrary by chaptersViewModel.inLibrary.collectAsState()
@@ -71,7 +73,17 @@ fun Chapters(
     val readChapters by chaptersViewModel.readChapters.collectAsState()
     val readChaptersNumber by chaptersViewModel.readChaptersNumber.collectAsState()
 
+
     var expandedState by remember { mutableStateOf(false) }
+
+    val systemUi = rememberSystemUiController()
+    LaunchedEffect(Unit)
+    {
+        systemUi.setSystemBarsColor(
+            color = Color.Transparent,
+            darkIcons = true,
+        )
+    }
 
 
     LaunchedEffect(mangaLink) {
@@ -267,26 +279,23 @@ fun Chapters(
                     .clickable {
                         coroutineScope.launch {
                             val chapterNumber = getChapterNumber(chapter.readerLink)
-                            val existingChapterRead = chaptersReadDao.getChapterRead(mangaId, chapterNumber)
+                            val existingChapterRead =
+                                chaptersReadDao.getChapterRead(mangaId, chapterNumber)
                             val totalPages = getPageCount(chapterLink = chapter.readerLink)
                             if (existingChapterRead == null) {
                                 chaptersReadDao.addOrUpdateChaptersRead(
                                     chapterRead = ChaptersRead(
                                         mangaId = mangaId,
                                         chapterLink = chapter.readerLink,
+                                        chapterTitle = chapter.title,
                                         chapter = chapterNumber,
                                         totalPages = totalPages,
-                                        timeStamp = System.currentTimeMillis()
+                                        timeStamp = System.currentTimeMillis(),
                                     )
                                 )
-                               /* *//*readChapters.add(chapterNumber)
-                                chaptersViewModel.updateReadChapters()*//*
-                                chaptersViewModel.updateReadChapters()*/
 
                                 Log.d("Chapters", "chapter added: $chapterNumber")
-                            }
-                            else
-                            {
+                            } else {
                                 Log.d("Chapters", "chapter already exists: $chapterNumber")
                             }
                         }
@@ -294,9 +303,14 @@ fun Chapters(
                             Screen.ReaderScreen.withArgs(
                                 URLEncoder.encode(
                                     chapter.readerLink,
+                                    StandardCharsets.UTF_8.toString(),
+                                ),
+                                mangaId.toString(),
+                                chapter.title,
+                                URLEncoder.encode(
+                                    mangaLink,
                                     StandardCharsets.UTF_8.toString()
                                 ),
-                                mangaId.toString()
                             )
                         )
                     }

@@ -114,6 +114,19 @@ dependencies {
     implementation("androidx.compose.animation:animation:1.6.0")*/
 
     implementation("com.google.accompanist:accompanist-systemuicontroller:0.31.2-alpha")
+
+    implementation("androidx.datastore:datastore-preferences-core:1.1.1")
+
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
+
+    // optional - RxJava2 support
+    implementation("androidx.datastore:datastore-preferences-rxjava2:1.1.1")
+
+    // optional - RxJava3 support
+    implementation("androidx.datastore:datastore-preferences-rxjava3:1.1.1")
+
+
+
 }
 
 ksp {

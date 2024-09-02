@@ -18,6 +18,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,11 +27,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import data.dao.MangasDao
 import data.tables.Mangas
 import data.viewmodels.BrowseViewModel
@@ -50,6 +53,15 @@ fun Browse(navController: NavController, mangasDao: MangasDao, browseViewModel: 
     val searchValue by browseViewModel.searchValue.collectAsState()
     val searchResults by browseViewModel.searchResults.collectAsState()
     val errorMessage by browseViewModel.errorMessage.collectAsState()
+
+    val systemUi = rememberSystemUiController()
+    LaunchedEffect(Unit)
+    {
+        systemUi.setSystemBarsColor(
+            color = Color.Transparent,
+            darkIcons = true,
+        )
+    }
 
     Column {
         TextField(

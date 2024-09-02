@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "e56277c02c2e5b1d372f35ae39803dfd",
+    "identityHash": "b9931581704932fedc851357fcfc51ed",
     "entities": [
       {
         "tableName": "Mangas",
@@ -104,7 +104,7 @@
       },
       {
         "tableName": "ChaptersRead",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`mangaId` INTEGER NOT NULL, `chapterLink` TEXT NOT NULL, `chapter` REAL NOT NULL, `page` INTEGER NOT NULL, `totalPages` INTEGER NOT NULL, `timeStamp` INTEGER NOT NULL, PRIMARY KEY(`mangaId`, `chapterLink`), FOREIGN KEY(`mangaId`) REFERENCES `Mangas`(`mangaId`) ON UPDATE CASCADE ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`mangaId` INTEGER NOT NULL, `chapterLink` TEXT NOT NULL, `chapterTitle` TEXT NOT NULL, `chapter` REAL NOT NULL, `page` INTEGER NOT NULL, `totalPages` INTEGER NOT NULL, `timeStamp` INTEGER NOT NULL, PRIMARY KEY(`mangaId`, `chapterLink`), FOREIGN KEY(`mangaId`) REFERENCES `Mangas`(`mangaId`) ON UPDATE CASCADE ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "mangaId",
@@ -115,6 +115,12 @@
           {
             "fieldPath": "chapterLink",
             "columnName": "chapterLink",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chapterTitle",
+            "columnName": "chapterTitle",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -169,7 +175,7 @@
     "views": [
       {
         "viewName": "ChaptersReadInformation",
-        "createSql": "CREATE VIEW `${VIEW_NAME}` AS SELECT Mangas.mangaId, Mangas.mangaTitle, Mangas.mangaLink, Mangas.mangaImageCover, ChaptersRead.chapterLink, ChaptersRead.chapter, ChaptersRead.page, ChaptersRead.totalPages, ChaptersRead.totalPages - ChaptersRead.page AS pagesLeft, ChaptersRead.timeStamp FROM Mangas INNER JOIN ChaptersRead ON Mangas.mangaId = ChaptersRead.mangaId"
+        "createSql": "CREATE VIEW `${VIEW_NAME}` AS SELECT Mangas.mangaId, Mangas.mangaTitle, Mangas.mangaLink, Mangas.mangaImageCover, ChaptersRead.chapterLink, ChaptersRead.chapterTitle, ChaptersRead.chapter, ChaptersRead.page, ChaptersRead.totalPages, ChaptersRead.totalPages - ChaptersRead.page AS pagesLeft, ChaptersRead.timeStamp FROM Mangas INNER JOIN ChaptersRead ON Mangas.mangaId = ChaptersRead.mangaId"
       },
       {
         "viewName": "LibraryInformation",
@@ -178,7 +184,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e56277c02c2e5b1d372f35ae39803dfd')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'b9931581704932fedc851357fcfc51ed')"
     ]
   }
 }

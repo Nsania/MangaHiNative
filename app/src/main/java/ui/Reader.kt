@@ -77,6 +77,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -85,6 +86,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.privacysandbox.tools.core.model.Type
@@ -94,6 +96,7 @@ import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.google.accompanist.systemuicontroller.SystemUiController
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import data.UserRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -107,6 +110,8 @@ import data.dao.ChaptersReadInformationDao
 import data.viewmodels.ReaderViewModel
 import scraper.downloadImage
 import java.io.File
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.util.UUID
 import kotlin.math.roundToInt
 
@@ -121,7 +126,9 @@ fun Reader(
     chaptersReadDao: ChaptersReadDao,
     mangaId: Int,
     navController: NavController,
-    viewModel: ReaderViewModel = viewModel(),
+    viewModel: ReaderViewModel = viewModel(factory = ReaderViewModel.Factory),
+    chapterTitle: String,
+    mangaLink: String,
 ) {
     val totalPages by viewModel.totalPages.collectAsState()
     val chapters by viewModel.chapters.collectAsState()
@@ -145,15 +152,17 @@ fun Reader(
     val systemUiController = rememberSystemUiController()
 
     val readerModeOptions  = listOf("Long Strip", "Paged(left to right)", "Paged(vertical)")
-    var readerModeSelected by remember { mutableStateOf(readerModeOptions[1]) }
+    //var readerModeSelected by remember { mutableStateOf(readerModeOptions[0]) }
+    val readerModeSelected by viewModel.readerMode.collectAsState()
 
     val pagerState = rememberPagerState(pageCount = { totalPages })
+
 
     LaunchedEffect(isTopBarVisible) {
         val color = if (isTopBarVisible) Color.White else Color.Transparent
         systemUiController.setSystemBarsColor(
             color = color,
-            darkIcons = isTopBarVisible // Optional: Adjust icon color for contrast
+            darkIcons = isTopBarVisible
         )
     }
 
@@ -235,16 +244,7 @@ fun Reader(
 
     LaunchedEffect(listState.firstVisibleItemIndex, pagerState.currentPage)
     {
-        /*if(readerModeSelected == "Long Strip")
-        {
-            currentPage = listState.firstVisibleItemIndex
-        }
-        else if(readerModeSelected == "Paged(left to right)")
-        {
-            currentPage = pagerState.currentPage
-            Log.d("Reader", "CURRENT PAGE: ${pagerState.currentPage}")
-        }*/
-        currentPage = if(readerModeSelected == "Long Strip") {
+        currentPage = if(readerModeSelected == 0) {
             listState.firstVisibleItemIndex
         }
         else
@@ -299,7 +299,21 @@ fun Reader(
                         }
                     },
                     title = {
-                        Text("Hello")
+                        Text("${
+                            chapterTitle.lowercase()
+                                .substringAfterLast("chapter")
+                                .trim()
+                                .split(" ", limit = 2)
+                                .let { "Chapter ${it[0]} ${it.getOrNull(1)?.replaceFirstChar { char -> char.titlecase() } ?: ""}" }
+
+                        }", fontSize = (20.sp), modifier = Modifier.fillMaxWidth().clickable {
+                            navController.navigate(Screen.ChaptersScreen.withArgs(
+                                URLEncoder.encode(
+                                    mangaLink,
+                                    StandardCharsets.UTF_8.toString()
+                                ),
+                            ))
+                        }, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     , actions = {
                         IconButton(onClick = {
@@ -326,10 +340,12 @@ fun Reader(
             ) {
                 Text("Reader Mode")
                 Row() {
-                    readerModeOptions.forEach { mode ->
+                    readerModeOptions.forEachIndexed { index, mode ->
                         FilterChip(
-                            selected = readerModeSelected == mode,
-                            onClick = { readerModeSelected = mode },
+                            selected = readerModeSelected == index,
+                            onClick = {
+                                viewModel.saveReaderMode(index)
+                                      },
                             label = { Text(mode) },
                         )
                         Spacer(modifier = Modifier.width(10.dp))
@@ -350,7 +366,7 @@ fun Reader(
         ) {
             when (readerModeSelected)
             {
-                "Long Strip" -> {
+                0 -> {
                     LaunchedEffect(totalPages) {
                         coroutineScope.launch {
                             Log.d("Reader", "Current Page: $currentPage")
@@ -418,7 +434,7 @@ fun Reader(
                     }
                 }
 
-                "Paged(left to right)" -> {
+                1 -> {
                     LaunchedEffect(totalPages) {
                         if(totalPages > 0)
                         {
@@ -491,7 +507,7 @@ fun Reader(
                     }
                 }
 
-                "Paged(vertical)" -> {
+                2 -> {
                     LaunchedEffect(totalPages) {
                         if(totalPages > 0)
                         {

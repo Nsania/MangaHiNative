@@ -24,12 +24,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import data.dao.LibraryDao
 import data.dao.LibraryInformationDao
 import data.tables.LibraryInformation
@@ -47,6 +49,15 @@ fun Library(libraryDao: LibraryDao, libraryInformationDao: LibraryInformationDao
     val coroutineScope = rememberCoroutineScope()
 
     val mangasInLibraryList by libraryViewModel.mangasInLibraryList.collectAsState()
+
+    val systemUi = rememberSystemUiController()
+    LaunchedEffect(Unit)
+    {
+        systemUi.setSystemBarsColor(
+            color = Color.Transparent,
+            darkIcons = true,
+        )
+    }
 
     LaunchedEffect(Unit) {
         coroutineScope.launch {
