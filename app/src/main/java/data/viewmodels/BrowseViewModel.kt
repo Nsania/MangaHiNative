@@ -15,6 +15,9 @@ class BrowseViewModel: ViewModel() {
     private val _errorMessage = MutableStateFlow<String>("")
     val errorMessage: StateFlow<String> = _errorMessage
 
+    private val _topBarTitle = MutableStateFlow<String>("Browse")
+    val topBarTitle: StateFlow<String> = _topBarTitle
+
 
     fun updateSearchValue(searchValue: String)
     {
@@ -29,6 +32,11 @@ class BrowseViewModel: ViewModel() {
     fun updateErrorMessage(errorMessage: String)
     {
         _errorMessage.value = errorMessage
+    }
+
+    fun updateTopBarTitle(topBarTitle: String)
+    {
+        _topBarTitle.value = topBarTitle
     }
 
 }

@@ -40,14 +40,13 @@ fun Navigation(chaptersReadDao: ChaptersReadDao, libraryInformationDao: LibraryI
 )
 {
     val navController = rememberNavController()
-    //val chaptersViewModel: ChaptersViewModel = viewModel()
     val libraryViewModel: LibraryViewModel = viewModel()
     val recentsViewModel: RecentsViewModel = viewModel()
     val browseViewModel: BrowseViewModel = viewModel()
 
     NavHost(
         navController,
-        startDestination = Screen.BrowseScreen.route,
+        startDestination = Screen.LibraryScreen.route,
     )
     {
         composable(

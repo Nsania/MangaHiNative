@@ -26,6 +26,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -66,6 +68,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
@@ -117,7 +120,9 @@ import kotlin.math.roundToInt
 
 
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class,
+    ExperimentalLayoutApi::class
+)
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun Reader(
@@ -157,12 +162,11 @@ fun Reader(
 
     val pagerState = rememberPagerState(pageCount = { totalPages })
 
-
     LaunchedEffect(isTopBarVisible) {
-        val color = if (isTopBarVisible) Color.White else Color.Transparent
+        /*val color = if (isTopBarVisible) Color.Transparent else Color.Transparent*/
         systemUiController.setSystemBarsColor(
-            color = color,
-            darkIcons = isTopBarVisible
+            color = Color.Transparent,
+            darkIcons = false,
         )
     }
 
@@ -279,8 +283,7 @@ fun Reader(
     Scaffold(
         modifier = Modifier
             .fillMaxWidth()
-            .fillMaxHeight()
-        ,
+            .fillMaxHeight(),
         topBar = {
             AnimatedVisibility(
                 visible = isTopBarVisible,
@@ -294,7 +297,8 @@ fun Reader(
                         }) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Localized description"
+                                contentDescription = "Localized description",
+                                tint = Color.White
                             )
                         }
                     },
@@ -304,29 +308,44 @@ fun Reader(
                                 .substringAfterLast("chapter")
                                 .trim()
                                 .split(" ", limit = 2)
-                                .let { "Chapter ${it[0]} ${it.getOrNull(1)?.replaceFirstChar { char -> char.titlecase() } ?: ""}" }
+                                .let {
+                                    "Chapter ${it[0]} ${
+                                        it.getOrNull(1)
+                                            ?.replaceFirstChar { char -> char.titlecase() } ?: ""
+                                    }"
+                                }
 
-                        }", fontSize = (20.sp), modifier = Modifier.fillMaxWidth().clickable {
-                            navController.navigate(Screen.ChaptersScreen.withArgs(
-                                URLEncoder.encode(
-                                    mangaLink,
-                                    StandardCharsets.UTF_8.toString()
-                                ),
-                            ))
-                        }, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                    , actions = {
+                        }",
+                            fontSize = (20.sp),
+                            color = Color.White,
+                            modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                navController.navigate(
+                                    Screen.ChaptersScreen.withArgs(
+                                        URLEncoder.encode(
+                                            mangaLink,
+                                            StandardCharsets.UTF_8.toString()
+                                        ),
+                                    )
+                                )
+                            }, maxLines = 1, overflow = TextOverflow.Ellipsis
+                        )
+                    }, actions = {
                         IconButton(onClick = {
                             isReaderSettingsVisible = !isReaderSettingsVisible
                         }) {
                             Icon(
                                 imageVector = Icons.Filled.Settings,
-                                contentDescription = "Hello"
+                                contentDescription = "Hello",
+                                tint = Color.White
                             )
                         }
                     },
-
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color(0xFF352e38)
                     )
+                )
             }
 
         },
@@ -337,26 +356,34 @@ fun Reader(
             ModalBottomSheet(
                 onDismissRequest = { isReaderSettingsVisible = false },
                 sheetState = sheetState,
+                scrimColor = Color.Transparent,
+                containerColor = Color(0xFF352e38),
             ) {
-                Text("Reader Mode")
-                Row() {
-                    readerModeOptions.forEachIndexed { index, mode ->
-                        FilterChip(
-                            selected = readerModeSelected == index,
-                            onClick = {
-                                viewModel.saveReaderMode(index)
-                                      },
-                            label = { Text(mode) },
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(10.dp)
+                ){
+                    Text(text = "Reader Mode", color = Color.White)
+                    FlowRow() {
+                        readerModeOptions.forEachIndexed { index, mode ->
+                            FilterChip(
+                                selected = readerModeSelected == index,
+                                onClick = {
+                                    viewModel.saveReaderMode(index)
+                                },
+                                label = { Text(text = mode, color = if(readerModeSelected == index) Color.Black else Color.White) },
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                        }
                     }
                 }
+
             }
         }
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .background(Color.Black)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -411,7 +438,7 @@ fun Reader(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .aspectRatio(1f) // Default aspect ratio while loading
-                                            .background(Color.DarkGray) // Placeholder color
+                                            .background(Color.Transparent) // Placeholder color
                                     )
                                 }
                             } else {
@@ -420,7 +447,7 @@ fun Reader(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .aspectRatio(1f) // Default aspect ratio for placeholders
-                                        .background(Color.DarkGray), // Placeholder color
+                                        .background(Color.Transparent), // Placeholder color
                                     contentAlignment = Alignment.Center
                                 ) {
                                     CircularProgressIndicator(
@@ -485,7 +512,7 @@ fun Reader(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .aspectRatio(1f) // Default aspect ratio while loading
-                                        .background(Color.DarkGray) // Placeholder color
+                                        .background(Color.Transparent) // Placeholder color
                                 )
                             }
                         } else {
@@ -494,7 +521,7 @@ fun Reader(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .aspectRatio(1f) // Default aspect ratio for placeholders
-                                    .background(Color.DarkGray), // Placeholder color
+                                    .background(Color.Transparent), // Placeholder color
                                 contentAlignment = Alignment.Center
                             ) {
                                 CircularProgressIndicator(
@@ -519,7 +546,10 @@ fun Reader(
 
                     }
                     VerticalPager(
-                        modifier = Modifier.fillMaxSize().align(Alignment.Center).background(Color.Black),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .align(Alignment.Center)
+                            .background(Color.Black),
                         state = pagerState,
                     ) { page ->
                         var aspectRatio by remember { mutableStateOf(1f) }
@@ -564,16 +594,16 @@ fun Reader(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .aspectRatio(1f) // Default aspect ratio while loading
-                                        .background(Color.DarkGray) // Placeholder color
+                                        .background(Color.Transparent) // Placeholder color
                                 )
                             }
                         } else {
                             // Display a loading placeholder
                             Box(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .aspectRatio(1f) // Default aspect ratio for placeholders
-                                    .background(Color.DarkGray), // Placeholder color
+                                    .fillMaxSize()
+                                    .aspectRatio(1f)
+                                    .background(Color.Transparent), // Placeholder color
                                 contentAlignment = Alignment.Center
                             ) {
                                 CircularProgressIndicator(
