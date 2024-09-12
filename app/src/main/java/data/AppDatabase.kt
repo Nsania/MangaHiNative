@@ -8,14 +8,16 @@ import data.dao.ChaptersReadDao
 import data.dao.ChaptersReadInformationDao
 import data.dao.LibraryDao
 import data.dao.LibraryInformationDao
+import data.dao.MangaChaptersDao
 import data.dao.MangasDao
 import data.tables.ChaptersRead
 import data.tables.ChaptersReadInformation
 import data.tables.Library
 import data.tables.LibraryInformation
+import data.tables.MangaChapters
 import data.tables.Mangas
 
-@Database(entities = [Mangas::class, Library::class, ChaptersRead::class], views = [ChaptersReadInformation::class, LibraryInformation::class], version = 1)
+@Database(entities = [Mangas::class, Library::class, ChaptersRead::class, MangaChapters::class], views = [ChaptersReadInformation::class, LibraryInformation::class], version = 1)
 abstract class AppDatabase: RoomDatabase()
 {
     abstract fun mangasDao(): MangasDao
@@ -23,6 +25,7 @@ abstract class AppDatabase: RoomDatabase()
     abstract fun chaptersReadDao(): ChaptersReadDao
     abstract fun chaptersReadInformationDao(): ChaptersReadInformationDao
     abstract fun libraryInformationDao(): LibraryInformationDao
+    abstract fun mangaChaptersDao(): MangaChaptersDao
 
     companion object
     {

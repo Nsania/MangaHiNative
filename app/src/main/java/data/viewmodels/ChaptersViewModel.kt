@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import data.tables.ChaptersReadInformation
+import data.tables.MangaChapters
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -16,8 +17,8 @@ import kotlinx.coroutines.flow.stateIn
 import scraper.Chapter
 
 class ChaptersViewModel: ViewModel() {
-    private val _chapters = MutableStateFlow<List<Chapter>>(emptyList())
-    val chapters: StateFlow<List<Chapter>> = _chapters
+    private val _chapters = MutableStateFlow<List<MangaChapters>>(emptyList())
+    val chapters: StateFlow<List<MangaChapters>> = _chapters
 
     private val _mangaId = MutableStateFlow<Int>(0)
     val mangaId: StateFlow<Int> = _mangaId
@@ -45,7 +46,7 @@ class ChaptersViewModel: ViewModel() {
 
     val readChaptersNumber: StateFlow<List<Double>> = _readChapters.map { chapters -> chapters.map { it.chapter } }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    fun updateChapters(chapters: List<Chapter>)
+    fun updateChapters(chapters: List<MangaChapters>)
     {
         _chapters.value = chapters
     }

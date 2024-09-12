@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.MutableState
+import data.tables.MangaChapters
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -118,7 +119,7 @@ suspend fun getResults(search: String): List<Result> {
 }
 
 
-suspend fun getChapters(mangaLink: String): List<Chapter> {
+suspend fun getChapters(mangaId: Int, mangaLink: String): List<MangaChapters> {
     return withContext(Dispatchers.IO) {
         if (mangaLink.contains("chapmanganato")) {
             val document = Jsoup.connect(mangaLink).get()
@@ -126,7 +127,7 @@ suspend fun getChapters(mangaLink: String): List<Chapter> {
             val dates = document.select(".a-h>.chapter-time")
 
             val results = chapters.mapIndexed { index, element ->
-                Chapter(
+                /*Chapter(
                     title = element.attr("title"),
                     readerLink = element.attr("href"),
                     uploadDate = dates.getOrNull(index)?.text() ?: "",
@@ -135,6 +136,17 @@ suspend fun getChapters(mangaLink: String): List<Chapter> {
                         val matchResult = regex.find(it)
                         matchResult?.groupValues?.get(1)
                     }?.toDoubleOrNull() ?: -1.0
+                )*/
+                MangaChapters(
+                    mangaId = mangaId,
+                    chapter = element.attr("href").let {
+                        val regex = "chapter-(\\d+(\\.\\d+)?)".toRegex()
+                        val matchResult = regex.find(it)
+                        matchResult?.groupValues?.get(1)
+                    }?.toDoubleOrNull() ?: -1.0,
+                    chapterTitle = element.attr("title"),
+                    chapterLink = element.attr("href"),
+                    uploadDate = dates.getOrNull(index)?.text() ?: ""
                 )
             }
 
@@ -164,11 +176,18 @@ suspend fun getChapters(mangaLink: String): List<Chapter> {
 
 
             val results = chapters.mapIndexed { index, element ->
-                Chapter(
+                /*Chapter(
                     title = element.attr("title"),
                     readerLink = element.attr("href"),
                     uploadDate = chaptersUploadDates.getOrNull(index + 1).toString(),
                     chapter = chapterNumberList.getOrNull(index)?.toDouble() ?: -1.0
+                )*/
+                MangaChapters(
+                    mangaId = mangaId,
+                    chapter = chapterNumberList.getOrNull(index)?.toDouble() ?: -1.0,
+                    chapterTitle = element.attr("title"),
+                    chapterLink = element.attr("href"),
+                    uploadDate = chaptersUploadDates.getOrNull(index + 1).toString()
                 )
             }
 

@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "b9931581704932fedc851357fcfc51ed",
+    "identityHash": "da2601a715a7b282b847dde1a7a5e8ff",
     "entities": [
       {
         "tableName": "Mangas",
@@ -170,6 +170,63 @@
             ]
           }
         ]
+      },
+      {
+        "tableName": "MangaChapters",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`mangaId` INTEGER NOT NULL, `chapter` REAL NOT NULL, `chapterTitle` TEXT NOT NULL, `chapterLink` TEXT NOT NULL, `uploadDate` TEXT NOT NULL, PRIMARY KEY(`mangaId`, `chapter`), FOREIGN KEY(`mangaId`) REFERENCES `Mangas`(`mangaId`) ON UPDATE CASCADE ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "mangaId",
+            "columnName": "mangaId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chapter",
+            "columnName": "chapter",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chapterTitle",
+            "columnName": "chapterTitle",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chapterLink",
+            "columnName": "chapterLink",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "uploadDate",
+            "columnName": "uploadDate",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "mangaId",
+            "chapter"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": [
+          {
+            "table": "Mangas",
+            "onDelete": "CASCADE",
+            "onUpdate": "CASCADE",
+            "columns": [
+              "mangaId"
+            ],
+            "referencedColumns": [
+              "mangaId"
+            ]
+          }
+        ]
       }
     ],
     "views": [
@@ -184,7 +241,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'b9931581704932fedc851357fcfc51ed')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'da2601a715a7b282b847dde1a7a5e8ff')"
     ]
   }
 }

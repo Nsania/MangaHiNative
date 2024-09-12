@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import data.MyApplication
+import data.tables.MangaChapters
 
 /*data class CurrentReaderMode (
     val mode: Int
@@ -52,11 +53,24 @@ class ReaderViewModel(private val userRepository: UserRepository) : ViewModel() 
     private val _previousChapterLink = MutableStateFlow<String?>(null)
     val previousChapterLink: StateFlow<String?> = _previousChapterLink
 
+    private val _previousChapter = MutableStateFlow<MangaChapters?>(null)
+    val previousChapter: StateFlow<MangaChapters?> = _previousChapter
+
+    private val _nextChapter = MutableStateFlow<MangaChapters?>(null)
+    val nextChapter: StateFlow<MangaChapters?> = _nextChapter
+
+    private val _previousChapterTotalPages = MutableStateFlow<Int>(0)
+    val previousChapterTotalPages: StateFlow<Int> = _previousChapterTotalPages
+    
+    private val _nextChapterTotalPages = MutableStateFlow<Int>(0)
+    val nextChapterTotalPages: StateFlow<Int> = _nextChapterTotalPages
+
     private val _chapter = MutableStateFlow(0.0)
     val chapter: StateFlow<Double> = _chapter
 
     private val _imageFileNames = MutableStateFlow<List<String>>(emptyList())
     val imageFileNames: StateFlow<List<String>> = _imageFileNames
+
 
     fun saveReaderMode(mode: Int) {
         viewModelScope.launch {
@@ -78,6 +92,26 @@ class ReaderViewModel(private val userRepository: UserRepository) : ViewModel() 
 
     fun updatePreviousChapterLink(previousChapterLink: String?) {
         _previousChapterLink.value = previousChapterLink
+    }
+
+    fun updatePreviousChapter(previousChapter: MangaChapters)
+    {
+        _previousChapter.value = previousChapter
+    }
+
+    fun updateNextChapter(nextChapter: MangaChapters)
+    {
+        _nextChapter.value = nextChapter
+    }
+    
+    fun updatePreviousChapterTotalPages(previousChapterTotalPages: Int)
+    {
+        _previousChapterTotalPages.value = previousChapterTotalPages
+    }
+
+    fun updateNextChapterTotalPages(nextChapterTotalPages: Int)
+    {
+        _nextChapterTotalPages.value = nextChapterTotalPages
     }
 
     fun updateChapter(chapter: Double) {

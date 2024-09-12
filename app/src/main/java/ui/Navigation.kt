@@ -27,6 +27,7 @@ import data.dao.ChaptersReadDao
 import data.dao.ChaptersReadInformationDao
 import data.dao.LibraryDao
 import data.dao.LibraryInformationDao
+import data.dao.MangaChaptersDao
 import data.dao.MangasDao
 import data.viewmodels.BrowseViewModel
 import data.viewmodels.ChaptersViewModel
@@ -36,7 +37,7 @@ import data.viewmodels.RecentsViewModel
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun Navigation(chaptersReadDao: ChaptersReadDao, libraryInformationDao: LibraryInformationDao, mangasDao: MangasDao, libraryDao: LibraryDao, chaptersReadInformationDao: ChaptersReadInformationDao
-,
+, mangaChaptersDao: MangaChaptersDao
 )
 {
     val navController = rememberNavController()
@@ -85,7 +86,7 @@ fun Navigation(chaptersReadDao: ChaptersReadDao, libraryInformationDao: LibraryI
             popExitTransition = { ExitTransition.None},
 
         ) { entry ->
-            Chapters(mangaLink = entry.arguments?.getString("mangaLink").orEmpty(), navController, chaptersReadDao, libraryDao, mangasDao, chaptersReadInformationDao)
+            Chapters(mangaLink = entry.arguments?.getString("mangaLink").orEmpty(), navController, chaptersReadDao, libraryDao, mangasDao, chaptersReadInformationDao, mangaChaptersDao)
         }
         composable(
             route = Screen.ReaderScreen.route + "/{chapterLink}/{mangaId}/{chapterTitle}/{mangaLink}",
@@ -106,7 +107,7 @@ fun Navigation(chaptersReadDao: ChaptersReadDao, libraryInformationDao: LibraryI
         )
         { entry ->
             Reader(chapterLink = entry.arguments?.getString("chapterLink").toString(), chaptersReadInformationDao, chaptersReadDao, mangaId = entry.arguments?.getString("mangaId")
-                ?.toInt() ?: 0, navController, chapterTitle = entry.arguments?.getString("chapterTitle").toString(), mangaLink = entry.arguments?.getString("mangaLink").toString())
+                ?.toInt() ?: 0, navController, chapterTitle = entry.arguments?.getString("chapterTitle").toString(), mangaLink = entry.arguments?.getString("mangaLink").toString(), mangaChaptersDao = mangaChaptersDao)
         }
 
         composable(

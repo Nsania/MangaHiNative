@@ -68,6 +68,7 @@ import data.dao.*
 import data.tables.ChaptersRead
 import data.tables.ChaptersReadInformation
 import data.tables.Library
+import data.tables.MangaChapters
 import data.tables.Mangas
 import data.viewmodels.ChaptersViewModel
 import kotlinx.coroutines.flow.first
@@ -85,6 +86,7 @@ fun Chapters(
     libraryDao: LibraryDao,
     mangasDao: MangasDao,
     chaptersReadInformationDao: ChaptersReadInformationDao,
+    mangaChaptersDao: MangaChaptersDao,
     chaptersViewModel: ChaptersViewModel = viewModel()
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -150,11 +152,20 @@ fun Chapters(
         }
     }
 
-    LaunchedEffect(mangaLink) {
-        coroutineScope.launch {
-            chaptersViewModel.updateChapters(getChapters(mangaLink))
+
+    /*LaunchedEffect(chapters) {
+        if(chapters.isNotEmpty())
+        {
+            coroutineScope.launch {
+                if(!mangaChaptersDao.checkManga(mangaId))
+                {
+                    chapters.forEach { chapter ->
+                        mangaChaptersDao.addMangaChapters(MangaChapters(mangaId, chapter.chapter, chapter.chapterTitle, chapter.chapterLink, chapter.uploadDate))
+                    }
+                }
+            }
         }
-    }
+    }*/
 
     LaunchedEffect(mangaLink) {
         coroutineScope.launch {
@@ -173,6 +184,27 @@ fun Chapters(
             {
                 chaptersViewModel.updateInLibrary(false)
                 chaptersViewModel.updateLibraryText("Add to library")
+            }
+
+            if(mangaChaptersDao.checkManga(mangaId)) {
+                Log.d("Chapters", "Loading from Database")
+                mangaChaptersDao.getMangaChapters(mangaId).collect { chapters ->
+                    chaptersViewModel.updateChapters(chapters)
+                }
+            }
+        }
+    }
+
+
+    LaunchedEffect(chapters) {
+        coroutineScope.launch {
+            if(!mangaChaptersDao.checkManga(mangaId))
+            {
+                Log.d("Chapters", "Adding to Database")
+                chaptersViewModel.updateChapters(getChapters(mangaId, mangaLink))
+                chapters.forEach { chapter ->
+                    mangaChaptersDao.addMangaChapters(MangaChapters(mangaId, chapter.chapter, chapter.chapterTitle, chapter.chapterLink, chapter.uploadDate))
+                }
             }
         }
     }
@@ -415,16 +447,16 @@ fun Chapters(
                         .padding(horizontal = 10.dp)
                         .clickable {
                             coroutineScope.launch {
-                                val chapterNumber = getChapterNumber(chapter.readerLink)
+                                val chapterNumber = getChapterNumber(chapter.chapterLink)
                                 val existingChapterRead =
                                     chaptersReadDao.getChapterRead(mangaId, chapterNumber)
-                                val totalPages = getPageCount(chapterLink = chapter.readerLink)
+                                val totalPages = getPageCount(chapterLink = chapter.chapterLink)
                                 if (existingChapterRead == null) {
                                     chaptersReadDao.addOrUpdateChaptersRead(
                                         chapterRead = ChaptersRead(
                                             mangaId = mangaId,
-                                            chapterLink = chapter.readerLink,
-                                            chapterTitle = chapter.title,
+                                            chapterLink = chapter.chapterLink,
+                                            chapterTitle = chapter.chapterTitle,
                                             chapter = chapterNumber,
                                             totalPages = totalPages,
                                             timeStamp = System.currentTimeMillis(),
@@ -439,11 +471,11 @@ fun Chapters(
                             navController.navigate(
                                 Screen.ReaderScreen.withArgs(
                                     URLEncoder.encode(
-                                        chapter.readerLink,
+                                        chapter.chapterLink,
                                         StandardCharsets.UTF_8.toString(),
                                     ),
                                     mangaId.toString(),
-                                    chapter.title,
+                                    chapter.chapterTitle,
                                     URLEncoder.encode(
                                         mangaLink,
                                         StandardCharsets.UTF_8.toString()
@@ -457,7 +489,7 @@ fun Chapters(
                     ){
                         Text(
                             text = "${
-                                chapter.title.lowercase()
+                                chapter.chapterTitle.lowercase()
                                     .substringAfterLast("chapter")
                                     .trim()
                                     .split(" ", limit = 2)

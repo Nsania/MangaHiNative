@@ -110,6 +110,8 @@ import scraper.getPageCount
 import scraper.getChapterNumber
 import data.dao.ChaptersReadDao
 import data.dao.ChaptersReadInformationDao
+import data.dao.MangaChaptersDao
+import data.tables.ChaptersRead
 import data.viewmodels.ReaderViewModel
 import scraper.downloadImage
 import java.io.File
@@ -126,7 +128,9 @@ import kotlin.math.roundToInt
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun Reader(
+    //previousChapterLink: String,
     chapterLink: String,
+    //nextChapterLink: String,
     chaptersReadInformationDao: ChaptersReadInformationDao,
     chaptersReadDao: ChaptersReadDao,
     mangaId: Int,
@@ -134,15 +138,20 @@ fun Reader(
     viewModel: ReaderViewModel = viewModel(factory = ReaderViewModel.Factory),
     chapterTitle: String,
     mangaLink: String,
+    mangaChaptersDao: MangaChaptersDao
 ) {
     val totalPages by viewModel.totalPages.collectAsState()
     val chapters by viewModel.chapters.collectAsState()
     val imagePaths by viewModel.imagePaths.collectAsState()
     val previousChapterLink by viewModel.previousChapterLink.collectAsState()
     val chapter by viewModel.chapter.collectAsState()
+    val previousChapter by viewModel.previousChapter.collectAsState()
+    val nextChapter by viewModel.nextChapter.collectAsState()
+    val previousChapterTotalPages by viewModel.previousChapterTotalPages.collectAsState()
+    val nextChapterTotalPages by viewModel.nextChapterTotalPages.collectAsState()
     val imageFileNames by viewModel.imageFileNames.collectAsState()
 
-    var currentPage by remember { mutableIntStateOf(0) }
+    var currentPage by remember { mutableIntStateOf(1) }
     var isTopBarVisible by remember { mutableStateOf(false) }
     var isReaderSettingsVisible by remember { mutableStateOf(false) }
 
@@ -150,6 +159,7 @@ fun Reader(
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val uniqueFolderName = UUID.nameUUIDFromBytes(chapterLink.toByteArray()).toString()
+    //val uniqueFolderName = "${chapterLink}"
     val uniqueFolder = File(context.cacheDir, uniqueFolderName)
 
     val sheetState = rememberModalBottomSheetState()
@@ -160,7 +170,11 @@ fun Reader(
     //var readerModeSelected by remember { mutableStateOf(readerModeOptions[0]) }
     val readerModeSelected by viewModel.readerMode.collectAsState()
 
-    val pagerState = rememberPagerState(pageCount = { totalPages })
+    val pagerState = rememberPagerState(pageCount = { totalPages + 2 })
+    //DON'T TOUCH
+    if (!uniqueFolder.exists()) {
+        uniqueFolder.mkdirs()
+    }
 
     LaunchedEffect(isTopBarVisible) {
         /*val color = if (isTopBarVisible) Color.Transparent else Color.Transparent*/
@@ -170,10 +184,6 @@ fun Reader(
         )
     }
 
-    //DON'T TOUCH
-    if (!uniqueFolder.exists()) {
-        uniqueFolder.mkdirs()
-    }
 
     LaunchedEffect(chapterLink) {
         coroutineScope.launch(Dispatchers.IO) {
@@ -190,6 +200,7 @@ fun Reader(
         }
     }
 
+
     LaunchedEffect(chapterLink) {
         if (previousChapterLink != chapterLink) {
             withContext(Dispatchers.IO) {
@@ -204,7 +215,6 @@ fun Reader(
                 viewModel.updateTotalPages(pages)
                 viewModel.updateImagePaths(List(pages) { "" })
             }
-
             val existingFiles = uniqueFolder.listFiles()?.sortedBy { it.name }?.map { it.absolutePath } ?: emptyList()
             viewModel.updateImageFileNames(existingFiles)
 
@@ -218,6 +228,25 @@ fun Reader(
         }
     }
 
+
+    LaunchedEffect(chapter) {
+        if(chapter != 0.0) {
+            coroutineScope.launch{
+                viewModel.updateNextChapter(mangaChaptersDao.getNextChapter(chapter))
+                viewModel.updatePreviousChapter(mangaChaptersDao.getPreviousChapter(chapter))
+            }
+        }
+    }
+
+    LaunchedEffect(previousChapter, nextChapter) {
+        Log.d("Reader","Previous Chapter: ${previousChapter?.chapter}\nNext Chapter: ${nextChapter?.chapter}")
+        if(previousChapter != null && nextChapter != null)
+        {
+            Log.d("Reader", "ITS A GOOO")
+            viewModel.updateNextChapterTotalPages(getPageCount(nextChapter!!.chapterLink))
+            viewModel.updatePreviousChapterTotalPages(getPageCount(previousChapter!!.chapterLink))
+        }
+    }
 
     LaunchedEffect(chapters) {
         if (chapters.isNotEmpty() && imageFileNames.size != totalPages) {
@@ -279,6 +308,53 @@ fun Reader(
         }
     }
 
+    LaunchedEffect(currentPage) {
+        if(totalPages > 0)
+        {
+            if(currentPage == totalPages + 1)
+            {
+                Log.d("Reader", "END")
+                coroutineScope.launch {
+                    val chapterNumber = getChapterNumber(nextChapter?.chapterLink ?: "")
+                    val existingChapterRead = chaptersReadDao.getChapterRead(mangaId, chapterNumber)
+                    if (existingChapterRead == null) {
+                        chaptersReadDao.addOrUpdateChaptersRead(
+                            chapterRead = ChaptersRead(
+                                mangaId = mangaId,
+                                chapterLink = nextChapter?.chapterLink ?: "",
+                                chapterTitle = nextChapter?.chapterTitle ?: "",
+                                chapter = chapterNumber,
+                                totalPages = nextChapterTotalPages,
+                                timeStamp = System.currentTimeMillis(),
+                            )
+                        )
+                        Log.d("Chapters", "chapter added: $chapterNumber")
+                    } else {
+                        Log.d("Chapters", "chapter already exists: $chapterNumber")
+                    }
+                }
+                navController.navigate(
+                    Screen.ReaderScreen.withArgs(
+                        URLEncoder.encode(
+                            nextChapter?.chapterLink,
+                            StandardCharsets.UTF_8.toString(),
+                        ),
+                        mangaId.toString(),
+                        nextChapter?.chapterTitle ?: "",
+                        URLEncoder.encode(
+                            mangaLink,
+                            StandardCharsets.UTF_8.toString()
+                        ),
+                    )
+                )
+            }
+
+            if(currentPage == 0)
+            {
+                Log.d("Reader", "START")
+            }
+        }
+    }
 
     Scaffold(
         modifier = Modifier
@@ -319,17 +395,17 @@ fun Reader(
                             fontSize = (20.sp),
                             color = Color.White,
                             modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                navController.navigate(
-                                    Screen.ChaptersScreen.withArgs(
-                                        URLEncoder.encode(
-                                            mangaLink,
-                                            StandardCharsets.UTF_8.toString()
-                                        ),
+                                .fillMaxWidth()
+                                .clickable {
+                                    navController.navigate(
+                                        Screen.ChaptersScreen.withArgs(
+                                            URLEncoder.encode(
+                                                mangaLink,
+                                                StandardCharsets.UTF_8.toString()
+                                            ),
+                                        )
                                     )
-                                )
-                            }, maxLines = 1, overflow = TextOverflow.Ellipsis
+                                }, maxLines = 1, overflow = TextOverflow.Ellipsis
                         )
                     }, actions = {
                         IconButton(onClick = {
@@ -360,7 +436,9 @@ fun Reader(
                 containerColor = Color(0xFF352e38),
             ) {
                 Column(
-                    modifier = Modifier.fillMaxSize().padding(10.dp)
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(10.dp)
                 ){
                     Text(text = "Reader Mode", color = Color.White)
                     FlowRow() {
@@ -538,12 +616,15 @@ fun Reader(
                     LaunchedEffect(totalPages) {
                         if(totalPages > 0)
                         {
-                            coroutineScope.launch {
-                                Log.d("Reader", "Current Page: $currentPage")
-                                pagerState.scrollToPage(currentPage)
+                            if(currentPage == 0)
+                            {
+                                currentPage = 1
+                                coroutineScope.launch {
+                                    Log.d("Reader", "Current Page: $currentPage")
+                                    pagerState.scrollToPage(currentPage)
+                                }
                             }
                         }
-
                     }
                     VerticalPager(
                         modifier = Modifier
@@ -552,65 +633,89 @@ fun Reader(
                             .background(Color.Black),
                         state = pagerState,
                     ) { page ->
-                        var aspectRatio by remember { mutableStateOf(1f) }
-                        var isImageLoaded by remember { mutableStateOf(false) }
-
-                        val imagePath = imagePaths[page]
-
-                        if (imagePath.isNotEmpty()) {
-                            LaunchedEffect(imagePath) {
-                                val request = ImageRequest.Builder(context)
-                                    .data(imagePath)
-                                    .allowHardware(false) // Avoid hardware bitmaps as they might cause issues with aspect ratio calculation
-                                    .build()
-
-                                val result =
-                                    (context.imageLoader.execute(request) as? SuccessResult)?.drawable
-                                result?.let { drawable ->
-                                    aspectRatio =
-                                        drawable.intrinsicWidth.toFloat() / drawable.intrinsicHeight.toFloat()
-                                    isImageLoaded = true
-                                }
-                            }
-
-                            if (isImageLoaded) {
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Image(
-                                        painter = rememberAsyncImagePainter(model = imagePath),
-                                        contentDescription = null,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .aspectRatio(aspectRatio)
-                                    )
-                                }
-
-                            } else {
-                                // Placeholder to maintain space while the image is loading
+                        when (page) {
+                            0 -> {
                                 Box(
                                     modifier = Modifier
-                                        .fillMaxWidth()
-                                        .aspectRatio(1f) // Default aspect ratio while loading
-                                        .background(Color.Transparent) // Placeholder color
-                                )
+                                        .fillMaxSize()
+                                        .background(Color.Blue),
+                                    contentAlignment = Alignment.Center
+                                ){
+                                    Text("Start")
+                                }
                             }
-                        } else {
-                            // Display a loading placeholder
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .aspectRatio(1f)
-                                    .background(Color.Transparent), // Placeholder color
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.width(64.dp),
-                                    color = MaterialTheme.colorScheme.secondary,
-                                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                                )
+                            totalPages + 1 -> {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color.Blue),
+                                    contentAlignment = Alignment.Center
+                                ){
+                                    Text("End")
+                                }
+                            }
+                            else -> {
+                                var aspectRatio by remember { mutableStateOf(1f) }
+                                var isImageLoaded by remember { mutableStateOf(false) }
+
+                                val imagePath = imagePaths[page - 1]
+
+                                if (imagePath.isNotEmpty()) {
+                                    LaunchedEffect(imagePath) {
+                                        val request = ImageRequest.Builder(context)
+                                            .data(imagePath)
+                                            .allowHardware(false) // Avoid hardware bitmaps as they might cause issues with aspect ratio calculation
+                                            .build()
+
+                                        val result =
+                                            (context.imageLoader.execute(request) as? SuccessResult)?.drawable
+                                        result?.let { drawable ->
+                                            aspectRatio =
+                                                drawable.intrinsicWidth.toFloat() / drawable.intrinsicHeight.toFloat()
+                                            isImageLoaded = true
+                                        }
+                                    }
+
+                                    if (isImageLoaded) {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Image(
+                                                painter = rememberAsyncImagePainter(model = imagePath),
+                                                contentDescription = null,
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .aspectRatio(aspectRatio)
+                                            )
+                                        }
+
+                                    } else {
+                                        // Placeholder to maintain space while the image is loading
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .aspectRatio(1f) // Default aspect ratio while loading
+                                                .background(Color.Transparent) // Placeholder color
+                                        )
+                                    }
+                                } else {
+                                    // Display a loading placeholder
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .aspectRatio(1f)
+                                            .background(Color.Transparent), // Placeholder color
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.width(64.dp),
+                                            color = MaterialTheme.colorScheme.secondary,
+                                            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
