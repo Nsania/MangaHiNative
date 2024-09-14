@@ -41,6 +41,12 @@ class ReaderViewModel(private val userRepository: UserRepository) : ViewModel() 
             initialValue = 0
         )
 
+    private val _currentChapterLink = MutableStateFlow("")
+    val currentChapterLink: StateFlow<String> = _currentChapterLink
+
+    private val _currentChapterTitle = MutableStateFlow("")
+    val currentChapterTitle: StateFlow<String> = _currentChapterTitle
+
     private val _totalPages = MutableStateFlow(0)
     val totalPages: StateFlow<Int> = _totalPages
 
@@ -76,6 +82,16 @@ class ReaderViewModel(private val userRepository: UserRepository) : ViewModel() 
         viewModelScope.launch {
             userRepository.saveReaderMode(mode)
         }
+    }
+
+    fun updateChapterLink(currentChapterLink: String)
+    {
+        _currentChapterLink.value = currentChapterLink
+    }
+
+    fun updateCurrentChapterTitle(currentChapterTitle: String)
+    {
+        _currentChapterTitle.value = currentChapterTitle
     }
 
     fun updateTotalPages(totalPages: Int) {
