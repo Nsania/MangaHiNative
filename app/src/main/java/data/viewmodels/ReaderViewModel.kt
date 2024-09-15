@@ -84,7 +84,7 @@ class ReaderViewModel(private val userRepository: UserRepository) : ViewModel() 
         }
     }
 
-    fun updateChapterLink(currentChapterLink: String)
+    fun updateCurrentChapterLink(currentChapterLink: String)
     {
         _currentChapterLink.value = currentChapterLink
     }
