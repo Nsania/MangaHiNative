@@ -181,19 +181,6 @@ fun Reader(
         }
     }
 
-    LaunchedEffect(currentChapterLink) {
-        if(currentChapterLink != "")
-        {
-            uniqueFolderName = UUID.nameUUIDFromBytes(currentChapterLink.toByteArray()).toString()
-            Log.d("Reader", "Chapter link: $currentChapterLink")
-            coroutineScope.launch(Dispatchers.IO) {
-                if (!uniqueFolder.exists())
-                {
-                    uniqueFolder.mkdirs()
-                }
-            }
-        }
-    }
 
 
     LaunchedEffect(isTopBarVisible) {
@@ -203,27 +190,33 @@ fun Reader(
         )
     }
 
-
-    LaunchedEffect(currentChapterLink) {
-        Log.d("Reader", "Current Chapter Link: $currentChapterLink")
-        coroutineScope.launch(Dispatchers.IO) {
-            val info = chaptersReadInformationDao.getMangaIdAndPage(currentChapterLink)
-            val chapterNumber = getChapterNumber(currentChapterLink)
-            withContext(Dispatchers.Main) {
-                if (info != null) {
-                    currentPage = info.page
-                    Log.d("Reader", "Loaded mangaId: $mangaId, currentPage: $currentPage")
-                }
-                viewModel.updateChapter(chapterNumber)
-                Log.d("Reader", "Loaded chapterNumber: $chapter")
-            }
-        }
-    }
+    
 
 
     LaunchedEffect(currentChapterLink) {
         if(currentChapterLink.isNotEmpty())
         {
+            uniqueFolderName = UUID.nameUUIDFromBytes(currentChapterLink.toByteArray()).toString()
+            Log.d("Reader", "Chapter link: $currentChapterLink")
+            coroutineScope.launch(Dispatchers.IO) {
+                if (!uniqueFolder.exists())
+                {
+                    uniqueFolder.mkdirs()
+                }
+            }
+            Log.d("Reader", "Current Chapter Link: $currentChapterLink")
+            coroutineScope.launch(Dispatchers.IO) {
+                val info = chaptersReadInformationDao.getMangaIdAndPage(currentChapterLink)
+                val chapterNumber = getChapterNumber(currentChapterLink)
+                withContext(Dispatchers.Main) {
+                    if (info != null) {
+                        currentPage = info.page
+                        Log.d("Reader", "Loaded mangaId: $mangaId, currentPage: $currentPage")
+                    }
+                    viewModel.updateChapter(chapterNumber)
+                    Log.d("Reader", "Loaded chapterNumber: $chapter")
+                }
+            }
             if (previousChapterLink != currentChapterLink)
             {
                 withContext(Dispatchers.IO) {
