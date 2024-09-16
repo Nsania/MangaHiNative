@@ -110,12 +110,12 @@ class ReaderViewModel(private val userRepository: UserRepository) : ViewModel() 
         _previousChapterLink.value = previousChapterLink
     }
 
-    fun updatePreviousChapter(previousChapter: MangaChapters)
+    fun updatePreviousChapter(previousChapter: MangaChapters?)
     {
         _previousChapter.value = previousChapter
     }
 
-    fun updateNextChapter(nextChapter: MangaChapters)
+    fun updateNextChapter(nextChapter: MangaChapters?)
     {
         _nextChapter.value = nextChapter
     }

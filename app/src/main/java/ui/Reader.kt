@@ -128,9 +128,7 @@ import kotlin.math.roundToInt
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun Reader(
-    //previousChapterLink: String,
     chapterLink: String,
-    //nextChapterLink: String,
     chaptersReadInformationDao: ChaptersReadInformationDao,
     chaptersReadDao: ChaptersReadDao,
     mangaId: Int,
@@ -140,6 +138,8 @@ fun Reader(
     mangaLink: String,
     mangaChaptersDao: MangaChaptersDao
 ) {
+    val currentChapterLink by viewModel.currentChapterLink.collectAsState()
+    val currentChapterTitle by viewModel.currentChapterTitle.collectAsState()
     val totalPages by viewModel.totalPages.collectAsState()
     val chapters by viewModel.chapters.collectAsState()
     val imagePaths by viewModel.imagePaths.collectAsState()
@@ -150,52 +150,29 @@ fun Reader(
     val previousChapterTotalPages by viewModel.previousChapterTotalPages.collectAsState()
     val nextChapterTotalPages by viewModel.nextChapterTotalPages.collectAsState()
     val imageFileNames by viewModel.imageFileNames.collectAsState()
-    val currentChapterLink by viewModel.currentChapterLink.collectAsState()
-    val currentChapterTitle by viewModel.currentChapterTitle.collectAsState()
+    val readerModeSelected by viewModel.readerMode.collectAsState()
 
     var currentPage by remember { mutableIntStateOf(1) }
     var isTopBarVisible by remember { mutableStateOf(false) }
     var isReaderSettingsVisible by remember { mutableStateOf(false) }
     var fromExisting by remember { mutableStateOf(false) }
     var endOrStart by remember { mutableStateOf(false) }
-
-
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
-    //val uniqueFolderName = chapterTitle.toByteArray().toString()
     var uniqueFolderName = UUID.nameUUIDFromBytes(chapterLink.toByteArray()).toString()
-    //val uniqueFolderName = "${chapterLink}"
     val uniqueFolder = File(context.cacheDir, uniqueFolderName)
-
     val sheetState = rememberModalBottomSheetState()
-
     val systemUiController = rememberSystemUiController()
-
     val readerModeOptions  = listOf("Long Strip", "Paged(left to right)", "Paged(vertical)")
-    //var readerModeSelected by remember { mutableStateOf(readerModeOptions[0]) }
-    val readerModeSelected by viewModel.readerMode.collectAsState()
-
     val pagerState = rememberPagerState(pageCount = { totalPages + 2 })
 
 
-
-    //DON'T TOUCH
     if (!uniqueFolder.exists())
     {
         uniqueFolder.mkdirs()
     }
 
-
-    /*LaunchedEffect(currentChapterLink) {
-        if(currentChapterLink != "")
-        {
-            if(!uniqueFolder.exists())
-            {
-                uniqueFolder.mkdirs()
-            }
-        }
-    }*/
 
     LaunchedEffect(Unit) {
         withContext(Dispatchers.Main) {
@@ -205,7 +182,7 @@ fun Reader(
     }
 
     LaunchedEffect(currentChapterLink) {
-        if(currentChapterLink != "" && currentChapterLink != null)
+        if(currentChapterLink != "")
         {
             uniqueFolderName = UUID.nameUUIDFromBytes(currentChapterLink.toByteArray()).toString()
             Log.d("Reader", "Chapter link: $currentChapterLink")
@@ -245,11 +222,10 @@ fun Reader(
 
 
     LaunchedEffect(currentChapterLink) {
-        if(currentChapterLink != "")
+        if(currentChapterLink.isNotEmpty())
         {
             if (previousChapterLink != currentChapterLink)
             {
-                Log.d("Reader", "HELLOHELLO")
                 withContext(Dispatchers.IO) {
                     clearCache(context, uniqueFolderName)
                 }
@@ -265,50 +241,66 @@ fun Reader(
                 val existingFiles = uniqueFolder.listFiles()?.sortedBy { it.name }?.map { it.absolutePath } ?: emptyList()
                 viewModel.updateImageFileNames(existingFiles)
 
-                if (existingFiles.size == totalPages) {
+                if (existingFiles.size == totalPages)
+                {
                     withContext(Dispatchers.Main) {
                         viewModel.updateImagePaths(existingFiles)
                     }
-                } else {
+                }
+                else
+                {
                     viewModel.updateChapters(fetchChapterPageUrls(currentChapterLink))
                 }
             }
         }
-        /*else
-        {
-            viewModel.updateChapterLink(chapterLink)
-        }*/
-
     }
 
 
     LaunchedEffect(chapter) {
-        if(chapter != 0.0) {
+        if(chapter != 0.0)
+        {
             val previousChapterTemp = mangaChaptersDao.getPreviousChapter(mangaId, chapter)
-            val nextChapterTemp = mangaChaptersDao.getNextChapter(mangaId, chapter)
-
             if(previousChapterTemp != null)
             {
                 viewModel.updatePreviousChapter(previousChapterTemp)
             }
+            else
+            {
+                viewModel.updatePreviousChapter(null)
+            }
 
+            val nextChapterTemp = mangaChaptersDao.getNextChapter(mangaId, chapter)
             if(nextChapterTemp != null)
             {
                 viewModel.updateNextChapter(nextChapterTemp)
+            }
+            else
+            {
+                viewModel.updateNextChapter(null)
             }
         }
     }
 
     LaunchedEffect(previousChapter, nextChapter) {
         Log.d("Reader","Previous Chapter: ${previousChapter?.chapter}\nNext Chapter: ${nextChapter?.chapter}")
+        Log.d("Reader", "Previous Chapter Link: ${previousChapter?.chapterLink}\nNext Chapter Link: ${nextChapter?.chapterLink}")
+
         if(previousChapter != null)
         {
             viewModel.updatePreviousChapterTotalPages(getPageCount(previousChapter!!.chapterLink))
+        }
+        else
+        {
+            viewModel.updatePreviousChapterTotalPages(0)
         }
 
         if(nextChapter != null)
         {
             viewModel.updateNextChapterTotalPages(getPageCount(nextChapter!!.chapterLink))
+        }
+        else
+        {
+            viewModel.updatePreviousChapterTotalPages(0)
         }
     }
 
@@ -330,95 +322,6 @@ fun Reader(
         }
     }
 
-    /*LaunchedEffect(totalPages) {
-        if (totalPages > 0) {
-            coroutineScope.launch {
-                listState.scrollToItem(currentPage)
-                pagerState.scrollToPage(currentPage)
-            }
-        }
-    }
-
-    LaunchedEffect(listState.firstVisibleItemIndex, pagerState.currentPage)
-    {
-        currentPage = if(readerModeSelected == 0) {
-            listState.firstVisibleItemIndex
-        }
-        else
-        {
-            pagerState.currentPage
-        }
-
-        Log.d("Reader", "Current page updated to: $currentPage")
-
-        coroutineScope.launch(Dispatchers.IO) {
-            try {
-                val existingChapterRead = chaptersReadDao.getChapterRead(mangaId, chapter)
-                if (existingChapterRead != null) {
-                    chaptersReadDao.updatePage(
-                        mangaId,
-                        chapter,
-                        currentPage,
-                        System.currentTimeMillis()
-                    )
-                    Log.d(
-                        "Reader",
-                        "Updated page: $currentPage for mangaId: $mangaId, chapter: $chapter"
-                    )
-                }
-            } catch (e: Exception) {
-                Log.e("Reader", "Error saving page: ${e.message}")
-            }
-        }
-    }
-
-    LaunchedEffect(currentPage) {
-        if(totalPages > 0)
-        {
-            if(currentPage == totalPages + 1)
-            {
-                Log.d("Reader", "END")
-                coroutineScope.launch {
-                    val chapterNumber = getChapterNumber(nextChapter?.chapterLink ?: "")
-                    val existingChapterRead = chaptersReadDao.getChapterRead(mangaId, chapterNumber)
-                    if (existingChapterRead == null) {
-                        chaptersReadDao.addOrUpdateChaptersRead(
-                            chapterRead = ChaptersRead(
-                                mangaId = mangaId,
-                                chapterLink = nextChapter?.chapterLink ?: "",
-                                chapterTitle = nextChapter?.chapterTitle ?: "",
-                                chapter = chapterNumber,
-                                totalPages = nextChapterTotalPages,
-                                timeStamp = System.currentTimeMillis(),
-                            )
-                        )
-                        Log.d("Chapters", "chapter added: $chapterNumber")
-                    } else {
-                        Log.d("Chapters", "chapter already exists: $chapterNumber")
-                    }
-                }
-                navController.navigate(
-                    Screen.ReaderScreen.withArgs(
-                        URLEncoder.encode(
-                            nextChapter?.chapterLink,
-                            StandardCharsets.UTF_8.toString(),
-                        ),
-                        mangaId.toString(),
-                        nextChapter?.chapterTitle ?: "",
-                        URLEncoder.encode(
-                            mangaLink,
-                            StandardCharsets.UTF_8.toString()
-                        ),
-                    )
-                )
-            }
-
-            if(currentPage == 0)
-            {
-                Log.d("Reader", "START")
-            }
-        }
-    }*/
 
     LaunchedEffect(totalPages) {
         if (totalPages > 0) {
@@ -445,8 +348,11 @@ fun Reader(
                 fromExisting = true
                 endOrStart = true
                 Log.d("Reader", "Next Chapter Link: ${nextChapter!!.chapterLink}")
+
+                viewModel.updatePreviousChapterLink(currentChapterLink)
                 viewModel.updateCurrentChapterLink(nextChapter!!.chapterLink)
                 viewModel.updateCurrentChapterTitle(nextChapter!!.chapterTitle)
+
 
                 coroutineScope.launch {
                     val chapterNumber = getChapterNumber(nextChapter!!.chapterLink)
@@ -476,6 +382,8 @@ fun Reader(
                 fromExisting = true
                 endOrStart = false
                 Log.d("Reader", "Previous Chapter Link: ${previousChapter!!.chapterLink}")
+
+                viewModel.updatePreviousChapterLink(currentChapterLink)
                 viewModel.updateCurrentChapterLink(previousChapter!!.chapterLink)
                 viewModel.updateCurrentChapterTitle(previousChapter!!.chapterTitle)
 
@@ -545,6 +453,8 @@ fun Reader(
 
         }
     }
+
+
 
 
     Scaffold(
@@ -734,70 +644,105 @@ fun Reader(
                     LaunchedEffect(totalPages) {
                         if(totalPages > 0)
                         {
-                            coroutineScope.launch {
-                                Log.d("Reader", "Current Page: $currentPage")
-                                pagerState.scrollToPage(currentPage)
-                            }
-                        }
-
-                    }
-                    HorizontalPager(
-                        modifier = Modifier.fillMaxSize(),
-                        state = pagerState,
-                    ) { page ->
-                        var aspectRatio by remember { mutableStateOf(1f) }
-                        var isImageLoaded by remember { mutableStateOf(false) }
-
-                        val imagePath = imagePaths[page]
-
-                        if (imagePath.isNotEmpty()) {
-                            LaunchedEffect(imagePath) {
-                                val request = ImageRequest.Builder(context)
-                                    .data(imagePath)
-                                    .allowHardware(false) // Avoid hardware bitmaps as they might cause issues with aspect ratio calculation
-                                    .build()
-
-                                val result =
-                                    (context.imageLoader.execute(request) as? SuccessResult)?.drawable
-                                result?.let { drawable ->
-                                    aspectRatio =
-                                        drawable.intrinsicWidth.toFloat() / drawable.intrinsicHeight.toFloat()
-                                    isImageLoaded = true
+                            if(currentPage == 0)
+                            {
+                                currentPage = 1
+                                coroutineScope.launch {
+                                    Log.d("Reader", "Current Page: $currentPage")
+                                    pagerState.scrollToPage(currentPage)
                                 }
                             }
-
-                            if (isImageLoaded) {
-                                Image(
-                                    painter = rememberAsyncImagePainter(model = imagePath),
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .aspectRatio(aspectRatio)
-                                )
-                            } else {
-                                // Placeholder to maintain space while the image is loading
+                        }
+                    }
+                    HorizontalPager(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .align(Alignment.Center)
+                            .background(Color.Black),
+                        state = pagerState,
+                    ) { page ->
+                        when (page) {
+                            0 -> {
                                 Box(
                                     modifier = Modifier
-                                        .fillMaxWidth()
-                                        .aspectRatio(1f) // Default aspect ratio while loading
-                                        .background(Color.Transparent) // Placeholder color
-                                )
+                                        .fillMaxSize()
+                                        .background(Color.Blue),
+                                    contentAlignment = Alignment.Center
+                                ){
+                                    Text("Start")
+                                }
                             }
-                        } else {
-                            // Display a loading placeholder
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .aspectRatio(1f) // Default aspect ratio for placeholders
-                                    .background(Color.Transparent), // Placeholder color
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.width(64.dp),
-                                    color = MaterialTheme.colorScheme.secondary,
-                                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                                )
+                            totalPages + 1 -> {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color.Blue),
+                                    contentAlignment = Alignment.Center
+                                ){
+                                    Text("End")
+                                }
+                            }
+                            else -> {
+                                var aspectRatio by remember { mutableStateOf(1f) }
+                                var isImageLoaded by remember { mutableStateOf(false) }
+
+                                val imagePath = imagePaths[page - 1]
+                                if (imagePath.isNotEmpty()) {
+                                    LaunchedEffect(imagePath) {
+                                        val request = ImageRequest.Builder(context)
+                                            .data(imagePath)
+                                            .allowHardware(false) // Avoid hardware bitmaps as they might cause issues with aspect ratio calculation
+                                            .build()
+
+                                        val result =
+                                            (context.imageLoader.execute(request) as? SuccessResult)?.drawable
+                                        result?.let { drawable ->
+                                            aspectRatio =
+                                                drawable.intrinsicWidth.toFloat() / drawable.intrinsicHeight.toFloat()
+                                            isImageLoaded = true
+                                        }
+                                    }
+
+                                    if (isImageLoaded) {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Image(
+                                                painter = rememberAsyncImagePainter(model = imagePath),
+                                                contentDescription = null,
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .aspectRatio(aspectRatio)
+                                            )
+                                        }
+
+                                    } else {
+                                        // Placeholder to maintain space while the image is loading
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .aspectRatio(1f) // Default aspect ratio while loading
+                                                .background(Color.Transparent) // Placeholder color
+                                        )
+                                    }
+                                } else {
+                                    // Display a loading placeholder
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .aspectRatio(1f)
+                                            .background(Color.Transparent), // Placeholder color
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.width(64.dp),
+                                            color = MaterialTheme.colorScheme.secondary,
+                                            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -850,7 +795,6 @@ fun Reader(
                                 var isImageLoaded by remember { mutableStateOf(false) }
 
                                 val imagePath = imagePaths[page - 1]
-
                                 if (imagePath.isNotEmpty()) {
                                     LaunchedEffect(imagePath) {
                                         val request = ImageRequest.Builder(context)
