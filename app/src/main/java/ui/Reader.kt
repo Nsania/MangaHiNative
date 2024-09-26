@@ -24,7 +24,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -42,6 +44,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContent
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.systemBarsPadding
@@ -56,7 +59,11 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -77,10 +84,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -113,6 +124,7 @@ import data.dao.ChaptersReadInformationDao
 import data.dao.MangaChaptersDao
 import data.tables.ChaptersRead
 import data.viewmodels.ReaderViewModel
+import kotlinx.coroutines.Job
 import scraper.downloadImage
 import java.io.File
 import java.net.URLEncoder
@@ -165,14 +177,12 @@ fun Reader(
     val sheetState = rememberModalBottomSheetState()
     val systemUiController = rememberSystemUiController()
     val readerModeOptions  = listOf("Long Strip", "Paged(left to right)", "Paged(vertical)")
-    val pagerState = rememberPagerState(pageCount = { totalPages + 2 })
-
+    val pagerState = rememberPagerState(pageCount = { totalPages + 2 }, initialPage = 1)
 
     if (!uniqueFolder.exists())
     {
         uniqueFolder.mkdirs()
     }
-
 
     LaunchedEffect(Unit) {
         withContext(Dispatchers.Main) {
@@ -181,8 +191,6 @@ fun Reader(
         }
     }
 
-
-
     LaunchedEffect(isTopBarVisible) {
         systemUiController.setSystemBarsColor(
             color = Color.Transparent,
@@ -190,11 +198,9 @@ fun Reader(
         )
     }
 
-    
-
 
     LaunchedEffect(currentChapterLink) {
-        if(currentChapterLink.isNotEmpty())
+        if(currentChapterLink.isNotEmpty() && currentChapterLink != "")
         {
             uniqueFolderName = UUID.nameUUIDFromBytes(currentChapterLink.toByteArray()).toString()
             Log.d("Reader", "Chapter link: $currentChapterLink")
@@ -217,14 +223,6 @@ fun Reader(
                     Log.d("Reader", "Loaded chapterNumber: $chapter")
                 }
             }
-            if (previousChapterLink != currentChapterLink)
-            {
-                withContext(Dispatchers.IO) {
-                    clearCache(context, uniqueFolderName)
-                }
-                viewModel.updatePreviousChapterLink(currentChapterLink)
-            }
-
             coroutineScope.launch(Dispatchers.IO) {
                 val pages = getPageCount(currentChapterLink)
                 withContext(Dispatchers.Main) {
@@ -245,6 +243,14 @@ fun Reader(
                     viewModel.updateChapters(fetchChapterPageUrls(currentChapterLink))
                 }
             }
+
+            if (previousChapterLink != currentChapterLink)
+            {
+                withContext(Dispatchers.IO) {
+                    clearCache(context, uniqueFolderName)
+                }
+                viewModel.updatePreviousChapterLink(currentChapterLink)
+            }
         }
     }
 
@@ -252,7 +258,10 @@ fun Reader(
     LaunchedEffect(chapter) {
         if(chapter != 0.0)
         {
+            Log.d("Reader", "Current Chapter(257): $chapter")
             val previousChapterTemp = mangaChaptersDao.getPreviousChapter(mangaId, chapter)
+            val nextChapterTemp = mangaChaptersDao.getNextChapter(mangaId, chapter)
+
             if(previousChapterTemp != null)
             {
                 viewModel.updatePreviousChapter(previousChapterTemp)
@@ -262,7 +271,6 @@ fun Reader(
                 viewModel.updatePreviousChapter(null)
             }
 
-            val nextChapterTemp = mangaChaptersDao.getNextChapter(mangaId, chapter)
             if(nextChapterTemp != null)
             {
                 viewModel.updateNextChapter(nextChapterTemp)
@@ -293,7 +301,7 @@ fun Reader(
         }
         else
         {
-            viewModel.updatePreviousChapterTotalPages(0)
+            viewModel.updateNextChapterTotalPages(0)
         }
     }
 
@@ -327,56 +335,71 @@ fun Reader(
                 {
                     currentPage = totalPages
                 }
-                listState.scrollToItem(currentPage)
+                listState.scrollToItem(currentPage + 1)
                 pagerState.scrollToPage(currentPage)
             }
         }
     }
 
-    LaunchedEffect(currentPage) {
-        if(totalPages > 0)
-        {
-            if(currentPage == totalPages + 1 && nextChapter != null)
+
+    LaunchedEffect(listState, pagerState) {
+        // Observe changes in listState.firstVisibleItemIndex and pagerState.currentPage using snapshotFlow
+        snapshotFlow {
+            listState.firstVisibleItemIndex to pagerState.currentPage
+        }.collect { (firstVisibleItemIndex, currentPageFromPager) ->
+
+            // Determine the current page based on the selected reader mode
+            currentPage = if (readerModeSelected == 0)
             {
-                fromExisting = true
-                endOrStart = true
-                Log.d("Reader", "Next Chapter Link: ${nextChapter!!.chapterLink}")
+                if(firstVisibleItemIndex in 2..totalPages)
+                {
+                    firstVisibleItemIndex - 1
+                }
+                else
+                {
+                    firstVisibleItemIndex
+                }
+            }
+            else
+            {
+                currentPageFromPager
+            }
 
-                viewModel.updatePreviousChapterLink(currentChapterLink)
-                viewModel.updateCurrentChapterLink(nextChapter!!.chapterLink)
-                viewModel.updateCurrentChapterTitle(nextChapter!!.chapterTitle)
+            Log.d("Reader", "Current page updated to: $currentPage")
 
-
-                coroutineScope.launch {
-                    val chapterNumber = getChapterNumber(nextChapter!!.chapterLink)
-                    val existingChapterRead = chaptersReadDao.getChapterRead(mangaId, chapterNumber)
-                    if (existingChapterRead == null) {
-                        chaptersReadDao.addOrUpdateChaptersRead(
-                            chapterRead = ChaptersRead(
-                                mangaId = mangaId,
-                                chapterLink = nextChapter!!.chapterLink,
-                                chapterTitle = nextChapter!!.chapterTitle,
-                                chapter = chapterNumber,
-                                totalPages = nextChapterTotalPages,
-                                timeStamp = System.currentTimeMillis(),
-                            )
-                        )
-                        Log.d("Chapters", "chapter added: $chapterNumber")
-                    } else {
-                        Log.d("Chapters", "chapter already exists: $chapterNumber")
+            // Ensure the page is within valid bounds before updating
+            if (currentPage != totalPages + 1 && currentPage != 0) {
+                // Only update if we're in the same chapter
+                if (previousChapterLink == currentChapterLink) {
+                    coroutineScope.launch {
+                        try {
+                            val existingChapterRead = chaptersReadDao.getChapterRead(mangaId, chapter)
+                            if (existingChapterRead != null) {
+                                Log.d("Reader", "Updating for chapter: $chapter")
+                                chaptersReadDao.updatePage(
+                                    mangaId = mangaId,
+                                    chapter = chapter,
+                                    page = currentPage,
+                                    timeStamp = System.currentTimeMillis()
+                                )
+                                Log.d(
+                                    "Reader",
+                                    "Updated page: $currentPage for mangaId: $mangaId, chapter: $chapter"
+                                )
+                            }
+                        } catch (e: Exception) {
+                            Log.e("Reader", "Error saving page: ${e.message}")
+                        }
                     }
                 }
             }
 
-            if(currentPage == 0 && previousChapter != null)
-            {
-                Log.d("Reader", "START")
-
+            // Handle scenario when at the start and need to navigate to the previous chapter
+            if (readerModeSelected == 0 && currentPage == 0 && previousChapter != null) {
                 fromExisting = true
                 endOrStart = false
                 Log.d("Reader", "Previous Chapter Link: ${previousChapter!!.chapterLink}")
 
-                viewModel.updatePreviousChapterLink(currentChapterLink)
                 viewModel.updateCurrentChapterLink(previousChapter!!.chapterLink)
                 viewModel.updateCurrentChapterTitle(previousChapter!!.chapterTitle)
 
@@ -391,7 +414,7 @@ fun Reader(
                                 chapterTitle = previousChapter!!.chapterTitle,
                                 chapter = chapterNumber,
                                 totalPages = previousChapterTotalPages,
-                                timeStamp = System.currentTimeMillis(),
+                                timeStamp = System.currentTimeMillis()
                             )
                         )
                         Log.d("Chapters", "chapter added: $chapterNumber")
@@ -399,15 +422,106 @@ fun Reader(
                         Log.d("Chapters", "chapter already exists: $chapterNumber")
                     }
                 }
+            }
 
+            // Handle scenario when at the end and need to navigate to the next chapter
+            if (readerModeSelected == 0 && currentPage == totalPages + 2 && nextChapter != null) {
+                fromExisting = true
+                endOrStart = true
+                Log.d("Reader", "Next Chapter Link: ${nextChapter!!.chapterLink}")
 
+                viewModel.updateCurrentChapterLink(nextChapter!!.chapterLink)
+                viewModel.updateCurrentChapterTitle(nextChapter!!.chapterTitle)
+
+                coroutineScope.launch {
+                    val chapterNumber = getChapterNumber(nextChapter!!.chapterLink)
+                    val existingChapterRead = chaptersReadDao.getChapterRead(mangaId, chapterNumber)
+                    if (existingChapterRead == null) {
+                        chaptersReadDao.addOrUpdateChaptersRead(
+                            chapterRead = ChaptersRead(
+                                mangaId = mangaId,
+                                chapterLink = nextChapter!!.chapterLink,
+                                chapterTitle = nextChapter!!.chapterTitle,
+                                chapter = chapterNumber,
+                                totalPages = nextChapterTotalPages,
+                                timeStamp = System.currentTimeMillis()
+                            )
+                        )
+                        Log.d("Chapters", "chapter added: $chapterNumber")
+                    } else {
+                        Log.d("Chapters", "chapter already exists: $chapterNumber")
+                    }
+                }
+            }
+
+            // Handle navigation to the previous chapter when not in reader mode 0
+            if (currentPage == 0 && previousChapter != null && readerModeSelected != 0) {
+                fromExisting = true
+                endOrStart = false
+                Log.d("Reader", "Previous Chapter Link: ${previousChapter!!.chapterLink}")
+
+                viewModel.updateCurrentChapterLink(previousChapter!!.chapterLink)
+                viewModel.updateCurrentChapterTitle(previousChapter!!.chapterTitle)
+
+                coroutineScope.launch {
+                    val chapterNumber = getChapterNumber(previousChapter!!.chapterLink)
+                    val existingChapterRead = chaptersReadDao.getChapterRead(mangaId, chapterNumber)
+                    if (existingChapterRead == null) {
+                        chaptersReadDao.addOrUpdateChaptersRead(
+                            chapterRead = ChaptersRead(
+                                mangaId = mangaId,
+                                chapterLink = previousChapter!!.chapterLink,
+                                chapterTitle = previousChapter!!.chapterTitle,
+                                chapter = chapterNumber,
+                                totalPages = previousChapterTotalPages,
+                                timeStamp = System.currentTimeMillis()
+                            )
+                        )
+                        Log.d("Chapters", "chapter added: $chapterNumber")
+                    } else {
+                        Log.d("Chapters", "chapter already exists: $chapterNumber")
+                    }
+                }
+            }
+
+            // Handle navigation to the next chapter when not in reader mode 0
+            if (currentPage == totalPages + 1 && nextChapter != null && readerModeSelected != 0) {
+                fromExisting = true
+                endOrStart = true
+                Log.d("Reader", "Next Chapter Link: ${nextChapter!!.chapterLink}")
+
+                viewModel.updateCurrentChapterLink(nextChapter!!.chapterLink)
+                viewModel.updateCurrentChapterTitle(nextChapter!!.chapterTitle)
+
+                coroutineScope.launch {
+                    val chapterNumber = getChapterNumber(nextChapter!!.chapterLink)
+                    val existingChapterRead = chaptersReadDao.getChapterRead(mangaId, chapterNumber)
+                    if (existingChapterRead == null) {
+                        chaptersReadDao.addOrUpdateChaptersRead(
+                            chapterRead = ChaptersRead(
+                                mangaId = mangaId,
+                                chapterLink = nextChapter!!.chapterLink,
+                                chapterTitle = nextChapter!!.chapterTitle,
+                                chapter = chapterNumber,
+                                totalPages = nextChapterTotalPages,
+                                timeStamp = System.currentTimeMillis()
+                            )
+                        )
+                        Log.d("Chapters", "chapter added: $chapterNumber")
+                    } else {
+                        Log.d("Chapters", "chapter already exists: $chapterNumber")
+                    }
+                }
             }
         }
     }
 
-    LaunchedEffect(listState.firstVisibleItemIndex, pagerState.currentPage)
+
+
+    /*LaunchedEffect(listState.firstVisibleItemIndex, pagerState.currentPage)
     {
-        currentPage = if(readerModeSelected == 0) {
+        currentPage = if(readerModeSelected == 0)
+        {
             listState.firstVisibleItemIndex
         }
         else
@@ -445,9 +559,135 @@ fun Reader(
             }
 
         }
-    }
 
 
+        if(readerModeSelected == 0 && currentPage == 0 && previousChapter != null)
+        {
+            fromExisting = true
+            endOrStart = false
+            Log.d("Reader", "Previous Chapter Link: ${previousChapter!!.chapterLink}")
+
+
+            viewModel.updateCurrentChapterLink(previousChapter!!.chapterLink)
+            viewModel.updateCurrentChapterTitle(previousChapter!!.chapterTitle)
+
+            coroutineScope.launch {
+                val chapterNumber = getChapterNumber(previousChapter!!.chapterLink)
+                val existingChapterRead = chaptersReadDao.getChapterRead(mangaId, chapterNumber)
+                if (existingChapterRead == null) {
+                    chaptersReadDao.addOrUpdateChaptersRead(
+                        chapterRead = ChaptersRead(
+                            mangaId = mangaId,
+                            chapterLink = previousChapter!!.chapterLink,
+                            chapterTitle = previousChapter!!.chapterTitle,
+                            chapter = chapterNumber,
+                            totalPages = previousChapterTotalPages,
+                            timeStamp = System.currentTimeMillis(),
+                        )
+                    )
+                    Log.d("Chapters", "chapter added: $chapterNumber")
+                }
+                else
+                {
+                    Log.d("Chapters", "chapter already exists: $chapterNumber")
+                }
+            }
+        }
+
+        if(readerModeSelected == 0 && currentPage == totalPages + 2 && nextChapter != null)
+        {
+            fromExisting = true
+            endOrStart = true
+            Log.d("Reader", "Next Chapter Link: ${nextChapter!!.chapterLink}")
+            viewModel.updateCurrentChapterLink(nextChapter!!.chapterLink)
+            viewModel.updateCurrentChapterTitle(nextChapter!!.chapterTitle)
+
+            coroutineScope.launch {
+                Log.d("Reader", "HELLO PLEASE: $currentChapterLink")
+                val chapterNumber = getChapterNumber(nextChapter!!.chapterLink)
+                val existingChapterRead = chaptersReadDao.getChapterRead(mangaId, chapterNumber)
+                if (existingChapterRead == null) {
+                    chaptersReadDao.addOrUpdateChaptersRead(
+                        chapterRead = ChaptersRead(
+                            mangaId = mangaId,
+                            chapterLink = nextChapter!!.chapterLink,
+                            chapterTitle = nextChapter!!.chapterTitle,
+                            chapter = chapterNumber,
+                            totalPages = nextChapterTotalPages,
+                            timeStamp = System.currentTimeMillis(),
+                        )
+                    )
+                    Log.d("Chapters", "chapter added: $chapterNumber")
+                } else {
+                    Log.d("Chapters", "chapter already exists: $chapterNumber")
+                }
+            }
+        }
+
+
+        if(currentPage == 0 && previousChapter != null && readerModeSelected != 0)
+        {
+            fromExisting = true
+            endOrStart = false
+            Log.d("Reader", "Previous Chapter Link: ${previousChapter!!.chapterLink}")
+
+
+            viewModel.updateCurrentChapterLink(previousChapter!!.chapterLink)
+            viewModel.updateCurrentChapterTitle(previousChapter!!.chapterTitle)
+
+            coroutineScope.launch {
+                val chapterNumber = getChapterNumber(previousChapter!!.chapterLink)
+                val existingChapterRead = chaptersReadDao.getChapterRead(mangaId, chapterNumber)
+                if (existingChapterRead == null) {
+                    chaptersReadDao.addOrUpdateChaptersRead(
+                        chapterRead = ChaptersRead(
+                            mangaId = mangaId,
+                            chapterLink = previousChapter!!.chapterLink,
+                            chapterTitle = previousChapter!!.chapterTitle,
+                            chapter = chapterNumber,
+                            totalPages = previousChapterTotalPages,
+                            timeStamp = System.currentTimeMillis(),
+                        )
+                    )
+                    Log.d("Chapters", "chapter added: $chapterNumber")
+                }
+                else
+                {
+                    Log.d("Chapters", "chapter already exists: $chapterNumber")
+                }
+            }
+        }
+
+        if(currentPage == totalPages + 1 && nextChapter != null && readerModeSelected != 0)
+        {
+            fromExisting = true
+            endOrStart = true
+            Log.d("Reader", "Next Chapter Link: ${nextChapter!!.chapterLink}")
+            viewModel.updateCurrentChapterLink(nextChapter!!.chapterLink)
+            viewModel.updateCurrentChapterTitle(nextChapter!!.chapterTitle)
+
+            coroutineScope.launch {
+                Log.d("Reader", "HELLO PLEASE: $currentChapterLink")
+                val chapterNumber = getChapterNumber(nextChapter!!.chapterLink)
+                val existingChapterRead = chaptersReadDao.getChapterRead(mangaId, chapterNumber)
+                if (existingChapterRead == null) {
+                    chaptersReadDao.addOrUpdateChaptersRead(
+                        chapterRead = ChaptersRead(
+                            mangaId = mangaId,
+                            chapterLink = nextChapter!!.chapterLink,
+                            chapterTitle = nextChapter!!.chapterTitle,
+                            chapter = chapterNumber,
+                            totalPages = nextChapterTotalPages,
+                            timeStamp = System.currentTimeMillis(),
+                        )
+                    )
+                    Log.d("Chapters", "chapter added: $chapterNumber")
+                } else {
+                    Log.d("Chapters", "chapter already exists: $chapterNumber")
+                }
+            }
+        }
+    }*/
 
 
     Scaffold(
@@ -519,6 +759,49 @@ fun Reader(
             }
 
         },
+        bottomBar = {
+            AnimatedVisibility(
+                visible = isTopBarVisible,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                BottomAppBar(
+                    containerColor = Color(0xFF352e38),
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        IconButton(
+                            onClick = {},
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.SkipPrevious,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(36.dp)
+                            )
+                        }
+
+                        Spacer(
+                            modifier = Modifier.width(100.dp)
+                        )
+
+                        IconButton(
+                            onClick = {}
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.SkipNext,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(36.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+        }
     ) { innerPadding ->
 
         if(isReaderSettingsVisible)
@@ -552,7 +835,7 @@ fun Reader(
             }
         }
 
-        Box(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black)
@@ -567,14 +850,52 @@ fun Reader(
             {
                 0 -> {
                     LaunchedEffect(totalPages) {
-                        coroutineScope.launch {
-                            Log.d("Reader", "Current Page: $currentPage")
-                            listState.scrollToItem(currentPage)
+                        if(totalPages > 0)
+                        {
+                            if(currentPage == 0)
+                            {
+                                currentPage = 2
+                                coroutineScope.launch {
+                                    Log.d("Reader", "Current Page: $currentPage")
+                                    listState.scrollToItem(currentPage)
+                                }
+                            }
+                            else
+                            {
+                                listState.scrollToItem(currentPage + 1)
+                            }
                         }
                     }
+                    val screenMaxHeight = maxHeight
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize()
-                        , state = listState) {
+                        modifier = Modifier.fillMaxSize(),
+                        state = listState
+                    )
+                    {
+                        item {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().height(screenMaxHeight/2).background(Color.Transparent),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Previous chapter",
+                                    color = Color.White,
+                                    fontSize = 20.sp
+                                )
+                            }
+                        }
+                        item {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().height(screenMaxHeight/2).background(Color.Transparent),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Start",
+                                    color = Color.White,
+                                    fontSize = 20.sp
+                                )
+                            }
+                        }
                         itemsIndexed(imagePaths) { index, imagePath ->
                             var aspectRatio by remember { mutableStateOf(1f) }
                             var isImageLoaded by remember { mutableStateOf(false) }
@@ -583,7 +904,7 @@ fun Reader(
                                 LaunchedEffect(imagePath) {
                                     val request = ImageRequest.Builder(context)
                                         .data(imagePath)
-                                        .allowHardware(false) // Avoid hardware bitmaps as they might cause issues with aspect ratio calculation
+                                        .allowHardware(false)
                                         .build()
 
                                     val result =
@@ -605,12 +926,11 @@ fun Reader(
                                             .aspectRatio(aspectRatio)
                                     )
                                 } else {
-                                    // Placeholder to maintain space while image is loading
                                     Box(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .aspectRatio(1f) // Default aspect ratio while loading
-                                            .background(Color.Transparent) // Placeholder color
+                                            .aspectRatio(1f)
+                                            .background(Color.Transparent)
                                     )
                                 }
                             } else {
@@ -630,6 +950,30 @@ fun Reader(
                                 }
                             }
                         }
+                        item {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().height(screenMaxHeight/2).background(Color.Transparent),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "End",
+                                    color = Color.White,
+                                    fontSize = 20.sp
+                                )
+                            }
+                        }
+                        item {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().height(screenMaxHeight/2).background(Color.Transparent),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Next chapter",
+                                    color = Color.White,
+                                    fontSize = 20.sp
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -642,6 +986,12 @@ fun Reader(
                                 currentPage = 1
                                 coroutineScope.launch {
                                     Log.d("Reader", "Current Page: $currentPage")
+                                    pagerState.scrollToPage(currentPage)
+                                }
+                            }
+                            else
+                            {
+                                coroutineScope.launch {
                                     pagerState.scrollToPage(currentPage)
                                 }
                             }
@@ -659,20 +1009,20 @@ fun Reader(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .background(Color.Blue),
+                                        .background(Color.Transparent),
                                     contentAlignment = Alignment.Center
                                 ){
-                                    Text("Start")
+                                    Text(text = "Start", color = Color.White)
                                 }
                             }
                             totalPages + 1 -> {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .background(Color.Blue),
+                                        .background(Color.Transparent),
                                     contentAlignment = Alignment.Center
                                 ){
-                                    Text("End")
+                                    Text(text = "End", color = Color.White)
                                 }
                             }
                             else -> {
@@ -753,6 +1103,12 @@ fun Reader(
                                     pagerState.scrollToPage(currentPage)
                                 }
                             }
+                            else
+                            {
+                                coroutineScope.launch {
+                                    pagerState.scrollToPage(currentPage)
+                                }
+                            }
                         }
                     }
                     VerticalPager(
@@ -767,20 +1123,20 @@ fun Reader(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .background(Color.Blue),
+                                        .background(Color.Transparent),
                                     contentAlignment = Alignment.Center
                                 ){
-                                    Text("Start")
+                                    Text(text = "Start", color = Color.White)
                                 }
                             }
                             totalPages + 1 -> {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .background(Color.Blue),
+                                        .background(Color.Transparent),
                                     contentAlignment = Alignment.Center
                                 ){
-                                    Text("End")
+                                    Text(text = "End", color = Color.White)
                                 }
                             }
                             else -> {

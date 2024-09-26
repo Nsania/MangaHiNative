@@ -272,6 +272,7 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import data.tables.MangaChapters
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -331,7 +332,7 @@ suspend fun fetchChapterPageUrls(chapterUrl: String): List<String> = withContext
 /**
  * Downloads an image from a given URL to the specified folder.
  */
-@RequiresApi(Build.VERSION_CODES.O)
+/*@RequiresApi(Build.VERSION_CODES.O)
 suspend fun downloadImage(context: Context, imageUrl: String, folder: File, index: Int): String = withContext(Dispatchers.IO) {
     try {
         val request = Request.Builder()
@@ -356,7 +357,55 @@ suspend fun downloadImage(context: Context, imageUrl: String, folder: File, inde
         println("Error downloading image: ${e.message}")
         ""
     }
+}*/
+@RequiresApi(Build.VERSION_CODES.O)
+suspend fun downloadImage(
+    context: Context,
+    imageUrl: String,
+    folder: File,
+    index: Int,
+    maxRetries: Int = 3,  // Maximum number of retry attempts
+    retryDelay: Long = 2000L  // Delay between retries in milliseconds
+): String = withContext(Dispatchers.IO) {
+    var attempt = 0
+    var success = false
+    var resultPath = ""
+
+    while (attempt < maxRetries && !success) {
+        try {
+            val request = Request.Builder()
+                .url(imageUrl)
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3")
+                .header("Referer", "https://mangakakalot.com/")
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) throw IOException("Unexpected code $response")
+
+                val fileName = String.format("%04d.jpg", index) // Zero-padded filename
+                val outputPath = File(folder, fileName).toPath()
+
+                response.body!!.byteStream().use { input ->
+                    Files.copy(input, outputPath)
+                }
+                println("Downloaded: $fileName")
+                resultPath = outputPath.toString()  // Store the result path
+                success = true  // Mark as successful
+            }
+        } catch (e: IOException) {
+            attempt++
+            if (attempt < maxRetries) {
+                println("Retrying download (attempt $attempt of $maxRetries)... Error: ${e.message}")
+                delay(retryDelay)  // Wait before retrying
+            } else {
+                println("Failed to download image after $maxRetries attempts. Error: ${e.message}")
+            }
+        }
+    }
+
+    return@withContext resultPath  // Return the output path or empty string on failure
 }
+
 
 /**
  * Fetches search results for a given manga title.
