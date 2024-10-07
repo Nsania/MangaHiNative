@@ -10,17 +10,28 @@ import kotlinx.coroutines.flow.map
 class UserRepository(private val dataStore: DataStore<Preferences>) {
     private companion object {
         val READER_MODE = intPreferencesKey("reader_mode")
-
+        val VIEW_MODE = intPreferencesKey("view_mode")
     }
 
     val currentReaderMode: Flow<Int> = dataStore.data.map { preferences ->
         preferences[READER_MODE] ?: 0
     }
 
+    val currentViewMode: Flow<Int> = dataStore.data.map { preferences ->
+        preferences[VIEW_MODE] ?: 0
+    }
+
     suspend fun saveReaderMode(mode: Int)
     {
         dataStore.edit { preferences ->
             preferences[READER_MODE] = mode
+        }
+    }
+
+    suspend fun saveViewMode(mode: Int)
+    {
+        dataStore.edit { preferences ->
+            preferences[VIEW_MODE] = mode
         }
     }
 }

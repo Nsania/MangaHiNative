@@ -3,42 +3,51 @@ package ui
 import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -46,36 +55,32 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
-import kotlinx.coroutines.launch
-import scraper.Chapter
-import scraper.getChapters
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
-import data.dao.*
+import data.dao.ChaptersReadDao
+import data.dao.ChaptersReadInformationDao
+import data.dao.LibraryDao
+import data.dao.MangaChaptersDao
+import data.dao.MangasDao
 import data.tables.ChaptersRead
-import data.tables.ChaptersReadInformation
 import data.tables.Library
 import data.tables.MangaChapters
-import data.tables.Mangas
 import data.viewmodels.ChaptersViewModel
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 import scraper.getChapterNumber
+import scraper.getChapters
 import scraper.getMangaDescription
 import scraper.getPageCount
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -110,6 +115,8 @@ fun Chapters(
     var scrollOffset by remember { mutableStateOf(0f) }
 
     var chapterRead by remember { mutableStateOf(false)}
+
+    val currentRoute = navController.currentBackStackEntry?.destination?.route
 
     LaunchedEffect(Unit)
     {
@@ -152,20 +159,6 @@ fun Chapters(
         }
     }
 
-
-    /*LaunchedEffect(chapters) {
-        if(chapters.isNotEmpty())
-        {
-            coroutineScope.launch {
-                if(!mangaChaptersDao.checkManga(mangaId))
-                {
-                    chapters.forEach { chapter ->
-                        mangaChaptersDao.addMangaChapters(MangaChapters(mangaId, chapter.chapter, chapter.chapterTitle, chapter.chapterLink, chapter.uploadDate))
-                    }
-                }
-            }
-        }
-    }*/
 
     LaunchedEffect(mangaLink) {
         coroutineScope.launch {
@@ -217,7 +210,8 @@ fun Chapters(
                 navigationIcon = {
                     IconButton(onClick = {
                         navigateTo(navController, Screen.LibraryScreen.route)
-                    }) {
+                    }
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = null,
@@ -257,7 +251,7 @@ fun Chapters(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(320.dp)
+                            .height(300.dp)
                     ) {
                         AsyncImage(
                             model = imageCover,
@@ -268,7 +262,6 @@ fun Chapters(
                             contentScale = ContentScale.Crop
                         )
 
-                        // Gradient overlay
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -277,7 +270,7 @@ fun Chapters(
                                     Brush.verticalGradient(
                                         colors = listOf(
                                             Color.Transparent,
-                                            Color.Black.copy(alpha = 0.9f)
+                                            Color(0xFF160e1a).copy(alpha = 1f)
                                         ),
                                         startY = 0f,
                                         endY = Float.POSITIVE_INFINITY
@@ -286,7 +279,6 @@ fun Chapters(
                         )
                     }
 
-                    // Original Row content
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.Bottom
@@ -295,11 +287,11 @@ fun Chapters(
                             model = imageCover,
                             contentDescription = "Image",
                             modifier = Modifier
-                                .width(140.dp)
+                                .width(135.dp)
                                 .height(190.dp)
                                 .padding(start = 10.dp)
                                 .padding(bottom = 10.dp)
-                                .clip(RoundedCornerShape(1)),
+                                .clip(RoundedCornerShape(5)),
                             contentScale = ContentScale.Crop,
                         )
                         Column(
@@ -311,7 +303,9 @@ fun Chapters(
                                 .padding(start = 20.dp)
                                 .height(150.dp)
                         ) {
-                            Text(text = title, fontSize = 30.sp, color = Color.White)
+                            Text(text = title, fontSize = 20.sp, color = Color.White, maxLines = 3, overflow = TextOverflow.Ellipsis
+                            , modifier = Modifier.padding(end = 20.dp))
+                            Spacer(modifier = Modifier.height(20.dp))
                             Button(
                                 onClick = {
                                     coroutineScope.launch {
@@ -368,7 +362,7 @@ fun Chapters(
                     Column {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(vertical = 20.dp, horizontal = 5.dp)
+                            modifier = Modifier.padding(vertical = 20.dp, horizontal = 10.dp)
                         ) {
                             Text(text = "Description", fontSize = 20.sp, color = Color.White)
                             Spacer(modifier = Modifier.width(10.dp))
@@ -405,7 +399,7 @@ fun Chapters(
                                 text = mangaDescription,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 5.dp)
+                                    .padding(horizontal = 10.dp)
                                     .padding(bottom = 10.dp),
                                 maxLines = 10,
                                 overflow = TextOverflow.Ellipsis,
@@ -421,11 +415,6 @@ fun Chapters(
             }
 
             items(chapters) { chapter ->
-                /*val color = if (chapter.chapter in readChaptersNumber) {
-                    Color.Gray
-                } else {
-                    Color.Transparent
-                }*/
 
                 if(chapter.chapter in readChaptersNumber)
                 {

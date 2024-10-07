@@ -4,22 +4,10 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.compose.NavHost
 import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
@@ -30,7 +18,6 @@ import data.dao.LibraryInformationDao
 import data.dao.MangaChaptersDao
 import data.dao.MangasDao
 import data.viewmodels.BrowseViewModel
-import data.viewmodels.ChaptersViewModel
 import data.viewmodels.LibraryViewModel
 import data.viewmodels.RecentsViewModel
 
@@ -41,9 +28,10 @@ fun Navigation(chaptersReadDao: ChaptersReadDao, libraryInformationDao: LibraryI
 )
 {
     val navController = rememberNavController()
-    val libraryViewModel: LibraryViewModel = viewModel()
+    //val libraryViewModel: LibraryViewModel = viewModel()
     val recentsViewModel: RecentsViewModel = viewModel()
     val browseViewModel: BrowseViewModel = viewModel()
+    val libraryViewModel: LibraryViewModel = viewModel(factory = LibraryViewModel.Factory)
 
     NavHost(
         navController,
@@ -58,8 +46,8 @@ fun Navigation(chaptersReadDao: ChaptersReadDao, libraryInformationDao: LibraryI
             popExitTransition = { ExitTransition.None},
             )
         {
-            BottomNavigationBar(navController) {
-                Library(libraryDao ,libraryInformationDao, navController, libraryViewModel)
+            BottomNavigationBar(navController) { innerPadding ->
+                Library(libraryDao = libraryDao , libraryInformationDao = libraryInformationDao, navController = navController, paddingValues = innerPadding, libraryViewModel = libraryViewModel)
             }
         }
         composable(
@@ -70,8 +58,8 @@ fun Navigation(chaptersReadDao: ChaptersReadDao, libraryInformationDao: LibraryI
             popExitTransition = { ExitTransition.None},
         )
         {
-            BottomNavigationBar(navController) {
-                Browse(navController = navController, mangasDao, browseViewModel)
+            BottomNavigationBar(navController) { innerPadding ->
+                Browse(navController = navController, mangasDao, browseViewModel, innerPadding)
             }
         }
         composable(
@@ -118,9 +106,8 @@ fun Navigation(chaptersReadDao: ChaptersReadDao, libraryInformationDao: LibraryI
             popExitTransition = { ExitTransition.None},
         )
         {
-            BottomNavigationBar(navController)
-            {
-                Recents(navController, chaptersReadInformationDao, recentsViewModel)
+            BottomNavigationBar(navController) { innerPadding ->
+                Recents(navController, chaptersReadInformationDao, recentsViewModel, innerPadding)
             }
         }
     }

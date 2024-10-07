@@ -126,6 +126,7 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences-rxjava3:1.1.1")
 
     implementation("androidx.compose.material:material-icons-extended:1.6.8")
+    implementation("net.engawapg.lib:zoomable:1.6.2")
 }
 
 ksp {

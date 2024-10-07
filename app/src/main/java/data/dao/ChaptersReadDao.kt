@@ -23,4 +23,5 @@ interface ChaptersReadDao
 
     @Query("SELECT totalPages FROM ChaptersRead WHERE chapterLink = :chapterLink")
     suspend fun getTotalPages(chapterLink: String): Int
+
 }

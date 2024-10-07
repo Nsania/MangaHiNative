@@ -1,11 +1,6 @@
 package ui
 
-import android.os.Build
-import androidx.annotation.RequiresApi
-import okhttp3.OkHttpClient
 import org.jsoup.Jsoup
-import scraper.Chapter
-import java.time.Instant
 
 fun main()
 {

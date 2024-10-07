@@ -6,7 +6,9 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.AP
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import data.MyApplication
 import data.UserRepository
+import data.tables.MangaChapters
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -14,12 +16,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import data.MyApplication
-import data.tables.MangaChapters
 
-/*data class CurrentReaderMode (
-    val mode: Int
-)*/
 
 class ReaderViewModel(private val userRepository: UserRepository) : ViewModel() {
 
@@ -77,6 +74,8 @@ class ReaderViewModel(private val userRepository: UserRepository) : ViewModel() 
     private val _imageFileNames = MutableStateFlow<List<String>>(emptyList())
     val imageFileNames: StateFlow<List<String>> = _imageFileNames
 
+    private val _imageLinks = MutableStateFlow<List<String>>(emptyList())
+    val imageLinks: StateFlow<List<String>> = _imageLinks
 
     fun saveReaderMode(mode: Int) {
         viewModelScope.launch {
@@ -151,4 +150,10 @@ class ReaderViewModel(private val userRepository: UserRepository) : ViewModel() 
             }
         }
     }
+
+    fun updateImageLinks(imageLinks: List<String>)
+    {
+        _imageLinks.value = imageLinks
+    }
+
 }

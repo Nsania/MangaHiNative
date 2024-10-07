@@ -1,12 +1,10 @@
 package ui
 
-import android.graphics.drawable.Icon
 import android.util.Log
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.EaseInOutCubic
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
@@ -14,6 +12,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -30,7 +29,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -38,21 +36,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.ArrowBackIosNew
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -61,7 +52,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,35 +60,42 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.example.mangahinative.R
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import data.dao.MangasDao
 import data.tables.Mangas
 import data.viewmodels.BrowseViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import scraper.Result
 import scraper.getResults
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Browse(navController: NavController, mangasDao: MangasDao, browseViewModel: BrowseViewModel) {
+fun Browse(
+    navController: NavController,
+    mangasDao: MangasDao,
+    browseViewModel: BrowseViewModel,
+    paddingValues: PaddingValues
+) {
     val coroutineScope = rememberCoroutineScope()
 
     val searchValue by browseViewModel.searchValue.collectAsState()
@@ -107,10 +104,11 @@ fun Browse(navController: NavController, mangasDao: MangasDao, browseViewModel: 
     val topBarTitle by browseViewModel.topBarTitle.collectAsState()
 
     var isSearching by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
-
     val systemUi = rememberSystemUiController()
+
     LaunchedEffect(Unit)
     {
         systemUi.setSystemBarsColor(
@@ -120,8 +118,7 @@ fun Browse(navController: NavController, mangasDao: MangasDao, browseViewModel: 
     }
 
     LaunchedEffect(isSearching) {
-        if(isSearching)
-        {
+        if (isSearching) {
             focusRequester.requestFocus()
         }
     }
@@ -134,7 +131,9 @@ fun Browse(navController: NavController, mangasDao: MangasDao, browseViewModel: 
     }
 
     Scaffold(
-        modifier = outsideTapModifier.fillMaxSize().background(Color.Red),
+        modifier = outsideTapModifier
+            .fillMaxSize()
+            .padding(paddingValues),
         topBar = {
             TopAppBar(
                 modifier = Modifier.animateContentSize(),
@@ -157,13 +156,29 @@ fun Browse(navController: NavController, mangasDao: MangasDao, browseViewModel: 
                                 visible = isSearching,
                                 enter = slideInHorizontally(
                                     initialOffsetX = { it }, // Slide in from left
-                                    animationSpec = tween(durationMillis = 300, easing = EaseInOutCubic)
-                                ) + fadeIn(animationSpec = tween(durationMillis = 200, easing = EaseInOutCubic)),
+                                    animationSpec = tween(
+                                        durationMillis = 300,
+                                        easing = EaseInOutCubic
+                                    )
+                                ) + fadeIn(
+                                    animationSpec = tween(
+                                        durationMillis = 200,
+                                        easing = EaseInOutCubic
+                                    )
+                                ),
                                 exit = slideOutHorizontally(
                                     targetOffsetX = { it }, // Slide out to right
-                                    animationSpec = tween(durationMillis = 300, easing = EaseInOutCubic)
-                                ) + fadeOut(animationSpec = tween(durationMillis = 200, easing = EaseInOutCubic))
-                            ){
+                                    animationSpec = tween(
+                                        durationMillis = 300,
+                                        easing = EaseInOutCubic
+                                    )
+                                ) + fadeOut(
+                                    animationSpec = tween(
+                                        durationMillis = 200,
+                                        easing = EaseInOutCubic
+                                    )
+                                )
+                            ) {
                                 IconButton(
                                     modifier = Modifier.size(40.dp),
                                     onClick = {
@@ -181,8 +196,12 @@ fun Browse(navController: NavController, mangasDao: MangasDao, browseViewModel: 
 
                             AnimatedVisibility(
                                 visible = isSearching,
-                                enter = fadeIn(animationSpec = tween(durationMillis = 500)) + expandHorizontally(animationSpec = tween(durationMillis = 300)),
-                                exit = fadeOut(animationSpec = tween(durationMillis = 500)) + shrinkHorizontally(animationSpec = tween(durationMillis = 300))
+                                enter = fadeIn(animationSpec = tween(durationMillis = 500)) + expandHorizontally(
+                                    animationSpec = tween(durationMillis = 300)
+                                ),
+                                exit = fadeOut(animationSpec = tween(durationMillis = 500)) + shrinkHorizontally(
+                                    animationSpec = tween(durationMillis = 300)
+                                )
                             )
                             {
                                 TextField(
@@ -190,10 +209,16 @@ fun Browse(navController: NavController, mangasDao: MangasDao, browseViewModel: 
                                         .focusRequester(focusRequester)
                                         .fillMaxWidth()
                                         .height(50.dp)
-                                        .padding(0.dp)
-                                    ,
+                                        .padding(0.dp),
                                     value = searchValue,
-                                    onValueChange = { browseViewModel.updateSearchValue(it) },
+                                    onValueChange = { newValue ->
+                                        browseViewModel.updateSearchValue(
+                                            TextFieldValue(
+                                                text = newValue.text,
+                                                selection = TextRange(newValue.text.length)
+                                            )
+                                        )
+                                    },
                                     placeholder = {
                                         Text(
                                             text = "Search",
@@ -218,39 +243,45 @@ fun Browse(navController: NavController, mangasDao: MangasDao, browseViewModel: 
                                     ),
                                     keyboardActions = KeyboardActions(
                                         onSearch = {
-                                            browseViewModel.updateTopBarTitle("\"$searchValue\" results")
-                                            focusManager.clearFocus()
-                                            isSearching = false
-                                            coroutineScope.launch {
-                                                try {
-                                                    browseViewModel.updateSearchResults(getResults(searchValue))
-                                                    browseViewModel.updateErrorMessage("")
-                                                } catch (e: Exception) {
-                                                    Log.e("SimpleForm", "Error fetching results", e)
-                                                    browseViewModel.updateErrorMessage("Failed to fetch search results")
+                                            if (searchValue.text.isNotEmpty()) {
+                                                browseViewModel.updateTopBarTitle("\"${searchValue.text}\" results")
+                                                focusManager.clearFocus()
+                                                isSearching = false
+                                                coroutineScope.launch {
+                                                    try {
+                                                        browseViewModel.updateSearchResults(
+                                                            getResults(searchValue.text)
+                                                        )
+                                                        browseViewModel.updateErrorMessage("")
+                                                    } catch (e: Exception) {
+                                                        Log.e(
+                                                            "SimpleForm",
+                                                            "Error fetching results",
+                                                            e
+                                                        )
+                                                        browseViewModel.updateErrorMessage("Failed to fetch search results")
+                                                    }
                                                 }
                                             }
-                                            browseViewModel.updateSearchValue("")
                                         }
                                     ),
                                     trailingIcon = {
-                                        if(searchValue.isNotEmpty())
-                                        {
+                                        if (searchValue.text.isNotEmpty()) {
                                             IconButton(
                                                 onClick = {
-                                                    browseViewModel.updateSearchValue("")
+                                                    browseViewModel.updateSearchValue(TextFieldValue())
                                                 }
                                             ) {
                                                 Icon(
                                                     imageVector = Icons.Default.Clear,
                                                     contentDescription = null,
+                                                    tint = Color.White
                                                 )
                                             }
                                         }
                                     }
                                 )
                             }
-
                         }
 
                         Row(
@@ -265,12 +296,28 @@ fun Browse(navController: NavController, mangasDao: MangasDao, browseViewModel: 
                                 visible = !isSearching,
                                 enter = slideInHorizontally(
                                     initialOffsetX = { -it }, // Slide in from left
-                                    animationSpec = tween(durationMillis = 100, easing = EaseInOutCubic)
-                                ) + fadeIn(animationSpec = tween(durationMillis = 100, easing = EaseInOutCubic)),
+                                    animationSpec = tween(
+                                        durationMillis = 100,
+                                        easing = EaseInOutCubic
+                                    )
+                                ) + fadeIn(
+                                    animationSpec = tween(
+                                        durationMillis = 100,
+                                        easing = EaseInOutCubic
+                                    )
+                                ),
                                 exit = slideOutHorizontally(
                                     targetOffsetX = { -it }, // Slide out to right
-                                    animationSpec = tween(durationMillis = 100, easing = EaseInOutCubic)
-                                ) + fadeOut(animationSpec = tween(durationMillis = 100, easing = EaseInOutCubic))
+                                    animationSpec = tween(
+                                        durationMillis = 100,
+                                        easing = EaseInOutCubic
+                                    )
+                                ) + fadeOut(
+                                    animationSpec = tween(
+                                        durationMillis = 100,
+                                        easing = EaseInOutCubic
+                                    )
+                                )
                             ) {
                                 AnimatedContent(
                                     targetState = topBarTitle, label = "",
@@ -285,14 +332,26 @@ fun Browse(navController: NavController, mangasDao: MangasDao, browseViewModel: 
 
                             AnimatedVisibility(
                                 visible = topBarTitle != "Browse" && !isSearching,
-                                enter = fadeIn(animationSpec = tween(durationMillis = 100, easing = EaseInOutCubic)),
-                                exit = fadeOut(animationSpec = tween(durationMillis = 300, easing = EaseInOutCubic))
-                            ){
+                                enter = fadeIn(
+                                    animationSpec = tween(
+                                        durationMillis = 100,
+                                        easing = EaseInOutCubic
+                                    )
+                                ),
+                                exit = fadeOut(
+                                    animationSpec = tween(
+                                        durationMillis = 300,
+                                        easing = EaseInOutCubic
+                                    )
+                                )
+                            ) {
                                 IconButton(
                                     modifier = Modifier.size(40.dp),
                                     onClick = {
                                         browseViewModel.updateTopBarTitle("Browse")
+                                        browseViewModel.updateSearchValue(TextFieldValue())
                                         browseViewModel.updateSearchResults(emptyList())
+                                        isSearching = true
                                     }
                                 )
                                 {
@@ -311,9 +370,30 @@ fun Browse(navController: NavController, mangasDao: MangasDao, browseViewModel: 
                 actions = {
                     IconButton(
                         onClick = {
-                            isSearching = true
+                            if (isSearching) {
+                                if (searchValue.text.isNotEmpty()) {
+                                    browseViewModel.updateTopBarTitle("\"${searchValue.text}\" results")
+                                    focusManager.clearFocus()
+                                    isSearching = false
+                                    coroutineScope.launch {
+                                        try {
+                                            browseViewModel.updateSearchResults(
+                                                getResults(
+                                                    searchValue.text
+                                                )
+                                            )
+                                            browseViewModel.updateErrorMessage("")
+                                        } catch (e: Exception) {
+                                            Log.e("SimpleForm", "Error fetching results", e)
+                                            browseViewModel.updateErrorMessage("Failed to fetch search results")
+                                        }
+                                    }
+                                }
+                            } else {
+                                isSearching = true
+                            }
                         }
-                    ){
+                    ) {
                         Icon(
                             imageVector = Icons.Filled.Search,
                             contentDescription = "Search",
@@ -325,27 +405,53 @@ fun Browse(navController: NavController, mangasDao: MangasDao, browseViewModel: 
         }
     ) { innerPadding ->
         Box(
-            modifier = Modifier.fillMaxSize().background(Color(0xFF160e1a))
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF160e1a)),
         ) {
+            if (searchResults.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.placeholderkuromiphone),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(100.dp)
+                                .alpha(0.7f),
+                            contentScale = ContentScale.Fit
+                        )
+                        Text(
+                            text = "Browse manga",
+                            color = Color(0xFF6e6775),
+                            fontSize = 20.sp
+                        )
+                    }
+
+                }
+            }
+
             Column(
-                modifier = Modifier.padding(innerPadding).padding(bottom = 45.dp)
+                modifier = Modifier.padding(innerPadding)
             ) {
 
-                if (errorMessage.isNotEmpty())
-                {
+                if (errorMessage.isNotEmpty()) {
                     Text(errorMessage, color = MaterialTheme.colorScheme.error)
-                }
-                else
-                {
+                } else {
                     LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = 120.dp), // Set the number of columns. You can change this to GridCells.Adaptive(minSize = 128.dp) if you want adaptive columns.
+                        columns = GridCells.Adaptive(minSize = 120.dp),
                         modifier = Modifier.padding(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                         items(searchResults) { result ->
-                            Column(modifier = Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth(),
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .fillMaxWidth(),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
                             ) {
@@ -378,9 +484,11 @@ fun Browse(navController: NavController, mangasDao: MangasDao, browseViewModel: 
                                                 )
                                             }
                                         }
-                                ){
+                                ) {
                                     Box(
-                                        modifier = Modifier.fillMaxSize().background(Color(0xFF161317)),
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(Color(0xFF161317)),
                                     )
 
                                     AsyncImage(
