@@ -16,13 +16,6 @@ data class Result(val title: String, val imageCover: String, val mangaLink: Stri
     }
 }
 
-data class Chapter(val title: String, val readerLink: String, val uploadDate: String, val chapter: Double)
-{
-    override fun toString(): String {
-        return "{Title: $title, ReaderLink: $readerLink, UploadDate: $uploadDate, Chapter: $chapter}"
-    }
-}
-
 private val client = OkHttpClient()
 
 suspend fun fetchChapterPageUrls(chapterUrl: String): List<String> = withContext(Dispatchers.IO) {

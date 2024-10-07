@@ -462,7 +462,7 @@ fun Reader(
                         .padding(10.dp)
                 ){
                     Text(text = "Reader Mode", color = Color.White)
-                    FlowRow() {
+                    FlowRow {
                         readerModeOptions.forEachIndexed { index, mode ->
                             FilterChip(
                                 selected = readerModeSelected == index,

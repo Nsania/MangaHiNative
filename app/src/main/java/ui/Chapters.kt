@@ -325,7 +325,7 @@ fun Chapters(
                                     containerColor = if (inLibrary) Color(0xFF6a4d75) else Color(0xFF4c8f45),
                                 )
                             ) {
-                                Row(){
+                                Row {
                                     Text(
                                         text = libraryText,
                                         color = Color.White
@@ -416,14 +416,7 @@ fun Chapters(
 
             items(chapters) { chapter ->
 
-                if(chapter.chapter in readChaptersNumber)
-                {
-                    chapterRead = true
-                }
-                else
-                {
-                    chapterRead = false
-                }
+                chapterRead = chapter.chapter in readChaptersNumber
 
                 val temp = readChapters.find {it.chapter == chapter.chapter}
 

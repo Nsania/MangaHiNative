@@ -147,7 +147,7 @@ fun Library(
                     modifier = Modifier.fillMaxSize().padding(10.dp)
                 ) {
                     Text(text = "View", color = Color.White)
-                    FlowRow() {
+                    FlowRow {
                         viewOptions.forEachIndexed { index, mode ->
                             FilterChip(
                                 selected = viewModeSelected == index,
