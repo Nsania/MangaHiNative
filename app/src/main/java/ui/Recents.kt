@@ -42,11 +42,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
+import coil.request.CachePolicy
+import coil.request.ImageRequest
 import com.example.mangahinative.R
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import data.dao.ChaptersReadInformationDao
@@ -54,7 +57,6 @@ import data.viewmodels.RecentsViewModel
 import kotlinx.coroutines.launch
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,7 +67,7 @@ fun Recents(navController: NavController, chaptersReadInformationDao: ChaptersRe
     var settingsExpanded by remember { mutableStateOf(false) }
     var clearHistoryExpanded by remember { mutableStateOf(false) }
     var check by remember { mutableStateOf(true) }
-
+    val context = LocalContext.current
 
     LaunchedEffect(Unit)
     {
@@ -114,18 +116,18 @@ fun Recents(navController: NavController, chaptersReadInformationDao: ChaptersRe
                         onDismissRequest = { settingsExpanded = false },
                         modifier = Modifier.background(Color(0xFF352e38))
                     ) {
-                       DropdownMenuItem(
-                           text = {
-                           Text(
-                               text = "Clear History",
-                               color = Color.White
-                           )
-                       },
-                           onClick = {
-                               clearHistoryExpanded = true
-                               settingsExpanded = false
-                           }
-                       )
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = "Clear History",
+                                    color = Color.White
+                                )
+                            },
+                            onClick = {
+                                clearHistoryExpanded = true
+                                settingsExpanded = false
+                            }
+                        )
                     }
 
                     if(clearHistoryExpanded)
@@ -236,8 +238,14 @@ fun Recents(navController: NavController, chaptersReadInformationDao: ChaptersRe
                                 )
                             }
                     ) {
-                        AsyncImage(
-                            model = recent.mangaImageCover,
+                        SubcomposeAsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(recent.mangaImageCover)
+                                .addHeader("Referer", "https://mangakakalot.com/")
+                                .addHeader("User-Agent", "Mozilla/5.0")
+                                .diskCachePolicy(CachePolicy.ENABLED)
+                                .memoryCachePolicy(CachePolicy.ENABLED)
+                                .build(),
                             contentDescription = "Image",
                             modifier = Modifier
                                 .width(80.dp)

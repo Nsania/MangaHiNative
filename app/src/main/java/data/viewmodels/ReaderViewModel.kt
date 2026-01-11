@@ -6,9 +6,12 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.AP
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import data.AppDatabase
 import data.MyApplication
 import data.UserRepository
+import data.dao.ChaptersReadDao
 import data.tables.MangaChapters
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -17,14 +20,22 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-
-class ReaderViewModel(private val userRepository: UserRepository) : ViewModel() {
+class ReaderViewModel(
+    private val userRepository: UserRepository,
+    private val chaptersReadDao: ChaptersReadDao
+) : ViewModel() {
 
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val application = (this[APPLICATION_KEY] as MyApplication)
-                ReaderViewModel(application.userRepository)
+
+                val database = AppDatabase.getDatabase(application.applicationContext)
+
+                ReaderViewModel(
+                    application.userRepository,
+                    database.chaptersReadDao()
+                )
             }
         }
     }
@@ -64,7 +75,7 @@ class ReaderViewModel(private val userRepository: UserRepository) : ViewModel() 
 
     private val _previousChapterTotalPages = MutableStateFlow<Int>(0)
     val previousChapterTotalPages: StateFlow<Int> = _previousChapterTotalPages
-    
+
     private val _nextChapterTotalPages = MutableStateFlow<Int>(0)
     val nextChapterTotalPages: StateFlow<Int> = _nextChapterTotalPages
 
@@ -83,13 +94,11 @@ class ReaderViewModel(private val userRepository: UserRepository) : ViewModel() 
         }
     }
 
-    fun updateCurrentChapterLink(currentChapterLink: String)
-    {
+    fun updateCurrentChapterLink(currentChapterLink: String) {
         _currentChapterLink.value = currentChapterLink
     }
 
-    fun updateCurrentChapterTitle(currentChapterTitle: String)
-    {
+    fun updateCurrentChapterTitle(currentChapterTitle: String) {
         _currentChapterTitle.value = currentChapterTitle
     }
 
@@ -109,23 +118,19 @@ class ReaderViewModel(private val userRepository: UserRepository) : ViewModel() 
         _previousChapterLink.value = previousChapterLink
     }
 
-    fun updatePreviousChapter(previousChapter: MangaChapters?)
-    {
+    fun updatePreviousChapter(previousChapter: MangaChapters?) {
         _previousChapter.value = previousChapter
     }
 
-    fun updateNextChapter(nextChapter: MangaChapters?)
-    {
+    fun updateNextChapter(nextChapter: MangaChapters?) {
         _nextChapter.value = nextChapter
     }
-    
-    fun updatePreviousChapterTotalPages(previousChapterTotalPages: Int)
-    {
+
+    fun updatePreviousChapterTotalPages(previousChapterTotalPages: Int) {
         _previousChapterTotalPages.value = previousChapterTotalPages
     }
 
-    fun updateNextChapterTotalPages(nextChapterTotalPages: Int)
-    {
+    fun updateNextChapterTotalPages(nextChapterTotalPages: Int) {
         _nextChapterTotalPages.value = nextChapterTotalPages
     }
 
@@ -151,9 +156,19 @@ class ReaderViewModel(private val userRepository: UserRepository) : ViewModel() 
         }
     }
 
-    fun updateImageLinks(imageLinks: List<String>)
-    {
+    fun updateImageLinks(imageLinks: List<String>) {
         _imageLinks.value = imageLinks
     }
 
+    // SAFE DATABASE SAVE FUNCTION
+    fun savePageProgress(mangaId: Int, chapter: Double, page: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            chaptersReadDao.updatePage(
+                mangaId = mangaId,
+                chapter = chapter,
+                page = page,
+                timeStamp = System.currentTimeMillis()
+            )
+        }
+    }
 }

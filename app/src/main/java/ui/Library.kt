@@ -50,12 +50,14 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.mangahinative.R
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import data.dao.LibraryDao
@@ -78,6 +80,7 @@ fun Library(
 )
 {
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     val mangasInLibraryList by libraryViewModel.mangasInLibraryList.collectAsState()
     val viewModeSelected by libraryViewModel.viewMode.collectAsState()
@@ -246,7 +249,11 @@ fun Library(
                                     }
 
                                     AsyncImage(
-                                        model = manga.mangaImageCover,
+                                        model = ImageRequest.Builder(context)
+                                            .data(manga.mangaImageCover)
+                                            .addHeader("Referer", "https://mangakakalot.com/")
+                                            .addHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                                            .build(),
                                         modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(5)),
                                         contentDescription = "Image",
                                         contentScale = ContentScale.Crop,
@@ -297,7 +304,11 @@ fun Library(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 AsyncImage(
-                                    model = manga.mangaImageCover,
+                                    model = ImageRequest.Builder(context)
+                                        .data(manga.mangaImageCover)
+                                        .addHeader("Referer", "https://mangakakalot.com/")
+                                        .addHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                                        .build(),
                                     modifier = Modifier.size(90.dp).clip(RoundedCornerShape(5)),
                                     contentDescription = null,
                                     contentScale = ContentScale.Crop,
