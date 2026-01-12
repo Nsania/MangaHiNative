@@ -95,7 +95,6 @@ suspend fun getChapters(context: Context, mangaId: Int, mangaLink: String): List
             chapters.map { element ->
                 val linkTag = element.selectFirst("a")
                 val dateTag = element.selectFirst(".chapter-time")
-                // FIX: Use ?.absUrl safely on the single element
                 val href = linkTag?.absUrl("href") ?: ""
 
                 MangaChapters(
